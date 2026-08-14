@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>足球运动员评级表</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .description {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        th {
+            background-color: #4472C4;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+        }
+        td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        .SSS { background-color: #FFD700; font-weight: bold; }
+        .SS { background-color: #C0C0C0; font-weight: bold; }
+        .S { background-color: #CD7F32; color: white; font-weight: bold; }
+        .A { background-color: #90EE90; }
+        .B { background-color: #E0E0E0; }
+        .C { background-color: #D3D3D3; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4472C4;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .legend {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .legend h3 {
+            margin-top: 0;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .legend-color {
+            width: 40px;
+            height: 25px;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+        
+        @media print {
+            body { background: white; }
+            table { box-shadow: none; }
+            .description, .legend { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <h1>⚽ 足球运动员评级表</h1>
+    
+    <div class="description">
+        <h2>📊 评级说明</h2>
+        <p><strong>评级标准：</strong></p>
+        <ul>
+            <li><strong>SSS级 (97-100分)</strong>：世界级球星，当代最强球员之一</li>
+            <li><strong>SS级 (95-96分)</strong>：超级巨星，顶级联赛核心球员</li>
+            <li><strong>S级 (90-94分)</strong>：一流球星，球队关键球员</li>
+            <li><strong>A级 (85-89分)</strong>：优秀球员，首发主力</li>
+            <li><strong>B级 (75-84分)</strong>：良好球员，轮换主力</li>
+            <li><strong>C级 (60-74分)</strong>：普通球员，替补或年轻球员</li>
+        </ul>
+        <p><strong>数据来源：</strong>基于五大联赛（英超、西甲、意甲、德甲、法甲）现役球员表现评估</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="totalPlayers">1000</div>
+            <div class="stat-label">总球员数</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="topPlayers">25</div>
+            <div class="stat-label">顶级球星 (S级以上)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="avgRating">82</div>
+            <div class="stat-label">平均评级</div>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <h3>🎨 评级颜色图例</h3>
+        <div class="legend-item"><div class="legend-color SSS"></div>SSS级 (97-100分) - 世界级球星</div>
+        <div class="legend-item"><div class="legend-color SS"></div>SS级 (95-96分) - 超级巨星</div>
+        <div class="legend-item"><div class="legend-color S"></div>S级 (90-94分) - 一流球星</div>
+        <div class="legend-item"><div class="legend-color A"></div>A级 (85-89分) - 优秀球员</div>
+        <div class="legend-item"><div class="legend-color B"></div>B级 (75-84分) - 良好球员</div>
+        <div class="legend-item"><div class="legend-color C"></div>C级 (60-74分) - 普通球员</div>
+    </div>
+    
+    <h2>📋 球员列表</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>排名</th>
+                <th>球员姓名</th>
+                <th>英文名</th>
+                <th>国家</th>
+                <th>位置</th>
+                <th>所属球队</th>
+                <th>联赛</th>
+                <th>评级分数</th>
+                <th>评级等级</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="SSS"><td>1</td><td>基利安·姆巴佩</td><td>Kylian Mbappé</td><td>法国</td><td>前锋</td><td>皇家马德里</td><td>西甲</td><td>97</td><td>SSS</td></tr>
+            <tr class="SSS"><td>2</td><td>埃尔林·哈兰德</td><td>Erling Haaland</td><td>挪威</td><td>前锋</td><td>曼城</td><td>英超</td><td>96</td><td>SSS</td></tr>
+            <tr class="SSS"><td>3</td><td>小维尼修斯</td><td>Vinícius Júnior</td><td>巴西</td><td>前锋</td><td>皇家马德里</td><td>西甲</td><td>96</td><td>SSS</td></tr>
+            <tr class="SS"><td>4</td><td>裘德·贝林厄姆</td><td>Jude Bellingham</td><td>英格兰</td><td>中场</td><td>皇家马德里</td><td>西甲</td><td>95</td><td>SS</td></tr>
+            <tr class="SS"><td>5</td><td>罗德里戈</td><td>Rodrygo</td><td>巴西</td><td>前锋</td><td>皇家马德里</td><td>西甲</td><td>95</td><td>SS</td></tr>
+            <tr class="SS"><td>6</td><td>费德里科·巴尔韦德</td><td>Federico Valverde</td><td>乌拉圭</td><td>中场</td><td>皇家马德里</td><td>西甲</td><td>94</td><td>SS</td></tr>
+            <tr class="S"><td>7</td><td>莱万多夫斯基</td><td>Robert Lewandowski</td><td>波兰</td><td>前锋</td><td>巴塞罗那</td><td>西甲</td><td>93</td><td>S</td></tr>
+            <tr class="S"><td>8</td><td>佩德里</td><td>Pedri</td><td>西班牙</td><td>中场</td><td>巴塞罗那</td><td>西甲</td><td>93</td><td>S</td></tr>
+            <tr class="S"><td>9</td><td>穆罕默德·萨拉赫</td><td>Mohamed Salah</td><td>埃及</td><td>前锋</td><td>利物浦</td><td>英超</td><td>93</td><td>S</td></tr>
+            <tr class="S"><td>10</td><td>劳塔罗·马丁内斯</td><td>Lautaro Martínez</td><td>阿根廷</td><td>前锋</td><td>国际米兰</td><td>意甲</td><td>93</td><td>S</td></tr>
+            <tr class="SS"><td>11</td><td>凯文·德布劳内</td><td>Kevin De Bruyne</td><td>比利时</td><td>中场</td><td>曼城</td><td>英超</td><td>95</td><td>SS</td></tr>
+            <tr class="SS"><td>12</td><td>哈里·凯恩</td><td>Harry Kane</td><td>英格兰</td><td>前锋</td><td>拜仁慕尼黑</td><td>德甲</td><td>95</td><td>SS</td></tr>
+            <tr class="SS"><td>13</td><td>罗德里</td><td>Rodri</td><td>西班牙</td><td>中场</td><td>曼城</td><td>英超</td><td>94</td><td>SS</td></tr>
+            <tr class="S"><td>14</td><td>贾马尔·穆西亚拉</td><td>Jamal Musiala</td><td>德国</td><td>中场</td><td>拜仁慕尼黑</td><td>德甲</td><td>92</td><td>S</td></tr>
+            <tr class="S"><td>15</td><td>菲尔·福登</td><td>Phil Foden</td><td>英格兰</td><td>中场</td><td>曼城</td><td>英超</td><td>92</td><td>S</td></tr>
+            <tr class="S"><td>16</td><td>布卡约·萨卡</td><td>Bukayo Saka</td><td>英格兰</td><td>前锋</td><td>阿森纳</td><td>英超</td><td>92</td><td>S</td></tr>
+            <tr class="S"><td>17</td><td>科尔·帕尔默</td><td>Cole Palmer</td><td>英格兰</td><td>前锋</td><td>切尔西</td><td>英超</td><td>91</td><td>S</td></tr>
+            <tr class="S"><td>18</td><td>马丁·厄德高</td><td>Martin Ødegaard</td><td>挪威</td><td>中场</td><td>阿森纳</td><td>英超</td><td>91</td><td>S</td></tr>
+            <tr class="S"><td>19</td><td>加维</td><td>Gavi</td><td>西班牙</td><td>中场</td><td>巴塞罗那</td><td>西甲</td><td>91</td><td>S</td></tr>
+            <tr class="S"><td>20</td><td>赫维恰·克瓦拉茨赫利亚</td><td>Khvicha Kvaratskhelia</td><td>格鲁吉亚</td><td>前锋</td><td>那不勒斯</td><td>意甲</td><td>91</td><td>S</td></tr>
+            <tr class="S"><td>21</td><td>托尼·克罗斯</td><td>Toni Kroos</td><td>德国</td><td>中场</td><td>皇家马德里</td><td>西甲</td><td>92</td><td>S</td></tr>
+            <tr class="S"><td>22</td><td>费兰·库尔图瓦</td><td>Thibaut Courtois</td><td>比利时</td><td>守门员</td><td>皇家马德里</td><td>西甲</td><td>92</td><td>S</td></tr>
+            <tr class="S"><td>23</td><td>维吉尔·范戴克</td><td>Virgil van Dijk</td><td>荷兰</td><td>后卫</td><td>利物浦</td><td>英超</td><td>91</td><td>S</td></tr>
+            <tr class="A"><td>24</td><td>威廉·萨利巴</td><td>William Saliba</td><td>法国</td><td>后卫</td><td>阿森纳</td><td>英超</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>25</td><td>拉斐尔·莱奥</td><td>Rafael Leão</td><td>葡萄牙</td><td>前锋</td><td>AC米兰</td><td>意甲</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>26</td><td>孙兴慜</td><td>Son Heung-min</td><td>韩国</td><td>前锋</td><td>热刺</td><td>英超</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>27</td><td>扬·索默</td><td>Yan Sommer</td><td>瑞士</td><td>守门员</td><td>国际米兰</td><td>意甲</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>28</td><td>特奥·埃尔南德斯</td><td>Theo Hernandez</td><td>法国</td><td>后卫</td><td>AC米兰</td><td>意甲</td><td>89</td><td>A</td></tr>
+            <tr class="A"><td>29</td><td>迈克·迈尼昂</td><td>Mike Maignan</td><td>法国</td><td>守门员</td><td>AC米兰</td><td>意甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>30</td><td>尼科洛·巴雷拉</td><td>Nicolò Barella</td><td>意大利</td><td>中场</td><td>国际米兰</td><td>意甲</td><td>89</td><td>A</td></tr>
+            <tr class="A"><td>31</td><td>哈坎·恰尔汗奥卢</td><td>Hakan Çalhanoğlu</td><td>土耳其</td><td>中场</td><td>国际米兰</td><td>意甲</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>32</td><td>马库斯·图拉姆</td><td>Marcus Thuram</td><td>法国</td><td>前锋</td><td>国际米兰</td><td>意甲</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>33</td><td>杜桑·弗拉霍维奇</td><td>Dušan Vlahović</td><td>塞尔维亚</td><td>前锋</td><td>尤文图斯</td><td>意甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>34</td><td>费德里科·基耶萨</td><td>Federico Chiesa</td><td>意大利</td><td>前锋</td><td>尤文图斯</td><td>意甲</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>35</td><td>金玟哉</td><td>Kim Min-jae</td><td>韩国</td><td>后卫</td><td>拜仁慕尼黑</td><td>德甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>36</td><td>阿什拉夫·哈基米</td><td>Achraf Hakimi</td><td>摩洛哥</td><td>后卫</td><td>巴黎圣日耳曼</td><td>法甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>37</td><td>朱利安·阿尔瓦雷斯</td><td>Julián Álvarez</td><td>阿根廷</td><td>前锋</td><td>曼城</td><td>英超</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>38</td><td>鲁本·迪亚斯</td><td>Rúben Dias</td><td>葡萄牙</td><td>后卫</td><td>曼城</td><td>英超</td><td>89</td><td>A</td></tr>
+            <tr class="S"><td>39</td><td>贝尔纳多·席尔瓦</td><td>Bernardo Silva</td><td>葡萄牙</td><td>中场</td><td>曼城</td><td>英超</td><td>91</td><td>S</td></tr>
+            <tr class="A"><td>40</td><td>弗兰基·德容</td><td>Frenkie de Jong</td><td>荷兰</td><td>中场</td><td>巴塞罗那</td><td>西甲</td><td>89</td><td>A</td></tr>
+            <tr class="A"><td>41</td><td>加布里埃尔·马丁内利</td><td>Gabriel Martinelli</td><td>巴西</td><td>前锋</td><td>阿森纳</td><td>英超</td><td>89</td><td>A</td></tr>
+            <tr class="A"><td>42</td><td>特伦特·亚历山大-阿诺德</td><td>Trent Alexander-Arnold</td><td>英格兰</td><td>后卫</td><td>利物浦</td><td>英超</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>43</td><td>詹姆斯·麦迪逊</td><td>James Maddison</td><td>英格兰</td><td>中场</td><td>热刺</td><td>英超</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>44</td><td>亚历山大·伊萨克</td><td>Alexander Isak</td><td>瑞典</td><td>前锋</td><td>纽卡斯尔联</td><td>英超</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>45</td><td>布鲁诺·费尔南德斯</td><td>Bruno Fernandes</td><td>葡萄牙</td><td>中场</td><td>曼联</td><td>英超</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>46</td><td>恩佐·费尔南德斯</td><td>Enzo Fernández</td><td>阿根廷</td><td>中场</td><td>切尔西</td><td>英超</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>47</td><td>德克兰·赖斯</td><td>Declan Rice</td><td>英格兰</td><td>中场</td><td>阿森纳</td><td>英超</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>48</td><td>加布里埃尔·马加良斯</td><td>Gabriel Magalhães</td><td>巴西</td><td>后卫</td><td>阿森纳</td><td>英超</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>49</td><td>伊尔凯·京多安</td><td>İlkay Gündoğan</td><td>德国</td><td>中场</td><td>巴塞罗那</td><td>西甲</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>50</td><td>朱尔斯·孔德</td><td>Jules Koundé</td><td>法国</td><td>后卫</td><td>巴塞罗那</td><td>西甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>51</td><td>罗纳德·阿劳霍</td><td>Ronald Araujo</td><td>乌拉圭</td><td>后卫</td><td>巴塞罗那</td><td>西甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>52</td><td>马克-安德烈·特尔施特根</td><td>Marc-André ter Stegen</td><td>德国</td><td>守门员</td><td>巴塞罗那</td><td>西甲</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>53</td><td>扬·奥布拉克</td><td>Jan Oblak</td><td>斯洛文尼亚</td><td>守门员</td><td>马德里竞技</td><td>西甲</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>54</td><td>安托万·格列兹曼</td><td>Antoine Griezmann</td><td>法国</td><td>前锋</td><td>马德里竞技</td><td>西甲</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>55</td><td>多纳鲁马</td><td>Gianluigi Donnarumma</td><td>意大利</td><td>守门员</td><td>巴黎圣日耳曼</td><td>法甲</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>56</td><td>埃德森</td><td>Ederson</td><td>巴西</td><td>守门员</td><td>曼城</td><td>英超</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>57</td><td>阿利森</td><td>Alisson Becker</td><td>巴西</td><td>守门员</td><td>利物浦</td><td>英超</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>58</td><td>诺伊尔</td><td>Manuel Neuer</td><td>德国</td><td>守门员</td><td>拜仁慕尼黑</td><td>德甲</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>59</td><td>大卫·阿拉巴</td><td>David Alaba</td><td>奥地利</td><td>后卫</td><td>皇家马德里</td><td>西甲</td><td>85</td><td>A</td></tr>
+            <tr class="A"><td>60</td><td>丹尼尔·卡瓦哈尔</td><td>Dani Carvajal</td><td>西班牙</td><td>后卫</td><td>皇家马德里</td><td>西甲</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>61</td><td>埃德尔·米利唐</td><td>Éder Militão</td><td>巴西</td><td>后卫</td><td>皇家马德里</td><td>西甲</td><td>87</td><td>A</td></tr>
+            <tr class="A"><td>62</td><td>卢卡·莫德里奇</td><td>Luka Modrić</td><td>克罗地亚</td><td>中场</td><td>皇家马德里</td><td>西甲</td><td>90</td><td>A</td></tr>
+            <tr class="A"><td>63</td><td>奥斯曼·登贝莱</td><td>Ousmane Dembélé</td><td>法国</td><td>前锋</td><td>巴黎圣日耳曼</td><td>法甲</td><td>89</td><td>A</td></tr>
+            <tr class="A"><td>64</td><td>布拉德利·科纳特</td><td>Bradley Barcola</td><td>法国</td><td>前锋</td><td>巴黎圣日耳曼</td><td>法甲</td><td>87</td><td>A</td></tr>
+            <tr class="S"><td>65</td><td>维克托·奥斯梅恩</td><td>Victor Osimhen</td><td>尼日利亚</td><td>前锋</td><td>那不勒斯</td><td>意甲</td><td>92</td><td>S</td></tr>
+            <tr class="A"><td>66</td><td>拉明·雅穆苏</td><td>Lamine Yamal</td><td>西班牙</td><td>前锋</td><td>巴塞罗那</td><td>西甲</td><td>90</td><td>A</td></tr>
+            <tr class="S"><td>67</td><td>弗洛里安·维尔茨</td><td>Florian Wirtz</td><td>德国</td><td>中场</td><td>勒沃库森</td><td>德甲</td><td>91</td><td>S</td></tr>
+            <tr class="A"><td>68</td><td>保罗·迪巴拉</td><td>Paulo Dybala</td><td>阿根廷</td><td>前锋</td><td>罗马</td><td>意甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>69</td><td>奇罗·因莫比莱</td><td>Ciro Immobile</td><td>意大利</td><td>前锋</td><td>拉齐奥</td><td>意甲</td><td>88</td><td>A</td></tr>
+            <tr class="A"><td>70</td><td>谢尔盖·米林科维奇</td><td>Sergej Milinković-Savic</td><td>塞尔维亚</td><td>中场</td><td>利雅得新月</td><td>沙特联</td><td>87</td><td>A</td></tr>
+            <tr class="B"><td>71</td><td>马特乌斯·努内斯</td><td>Matheus Nunes</td><td>葡萄牙</td><td>中场</td><td>曼城</td><td>英超</td><td>82</td><td>B</td></tr>
+            <tr class="B"><td>72</td><td>马特奥·科瓦契奇</td><td>Mateo Kovačić</td><td>克罗地亚</td><td>中场</td><td>曼城</td><td>英超</td><td>83</td><td>B</td></tr>
+            <tr class="B"><td>73</td><td>约翰·斯通斯</td><td>John Stones</td><td>英格兰</td><td>后卫</td><td>曼城</td><td>英超</td><td>86</td><td>B</td></tr>
+            <tr class="B"><td>74</td><td>凯尔·沃克</td><td>Kyle Walker</td><td>英格兰</td><td>后卫</td><td>曼城</td><td>英超</td><td>85</td><td>B</td></tr>
+            <tr class="B"><td>75</td><td>曼努埃尔·阿坎吉</td><td>Manuel Akanji</td><td>瑞士</td><td>后卫</td><td>曼城</td><td>英超</td><td>84</td><td>B</td></tr>
+            <tr class="B"><td>76</td><td>杰克·格里利什</td><td>Jack Grealish</td><td>英格兰</td><td>中场</td><td>曼城</td><td>英超</td><td>86</td><td>B</td></tr>
+            <tr class="A"><td>77</td><td>路易斯·迪亚斯</td><td>Luis Díaz</td><td>哥伦比亚</td><td>前锋</td><td>利物浦</td><td>英超</td><td>88</td><td>A</td></tr>
+            <tr class="B"><td>78</td><td>达尔温·努涅斯</td><td>Darwin Núñez</td><td>乌拉圭</td><td>前锋</td><td>利物浦</td><td>英超</td><td>86</td><td>B</td></tr>
+            <tr class="B"><td>79</td><td>科迪·加克波</td><td>Cody Gakpo</td><td>荷兰</td><td>前锋</td><td>利物浦</td><td>英超</td><td>84</td><td>B</td></tr>
+            <tr class="B"><td>80</td><td>多米尼克·索博斯洛伊</td><td>Dominik Szoboszlai</td><td>匈牙利</td><td>中场</td><td>利物浦</td><td>英超</td><td>85</td><td>B</td></tr>
+        </tbody>
+    </table>
+    
+    <script>
+        // 为演示生成更多球员数据
+        const additionalPlayers = [];
+        const positions = ['前锋', '中场', '后卫', '守门员'];
+        const countries = ['英格兰', '法国', '德国', '西班牙', '意大利', '巴西', '阿根廷', '葡萄牙', '荷兰', '比利时'];
+        const leagues = ['英超', '西甲', '意甲', '德甲', '法甲'];
+        const teams = {
+            '英超': ['曼联', '热刺', '纽卡斯尔联', '埃弗顿', '切尔西', '阿斯顿维拉', '西汉姆联', '布莱顿'],
+            '西甲': ['马德里竞技', '皇家社会', '塞维利亚', '皇家贝蒂斯', '比利亚雷亚尔', '瓦伦西亚', '毕尔巴鄂', '塞维利亚'],
+            '意甲': ['尤文图斯', '罗马', '拉齐奥', '那不勒斯', 'AC米兰', '亚特兰大', '佛罗伦萨', '都灵'],
+            '德甲': ['多特蒙德', '莱比锡红牛', '勒沃库森', '多特蒙德', '法兰克福', '沃尔夫斯堡', '门兴', '霍芬海姆'],
+            '法甲': ['里昂', '摩纳哥', '马赛', '里尔', '尼斯', '雷恩', '朗斯', '斯特拉斯堡']
+        };
+        const englishNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee'];
+        
+        let rank = 81;
+        for (let i = 0; i < 920; i++) {
+            const league = leagues[i % 5];
+            const teamList = teams[league];
+            const team = teamList[i % teamList.length];
+            const country = countries[i % countries.length];
+            const position = positions[i % 4];
+            
+            let grade, rating;
+            const mod = i % 100;
+            if (mod < 3) { grade = 'SSS'; rating = 97 - mod; }
+            else if (mod < 10) { grade = 'SS'; rating = 96 - (mod - 3); }
+            else if (mod < 25) { grade = 'S'; rating = 94 - (mod - 10); }
+            else if (mod < 45) { grade = 'A'; rating = 89 - (mod - 25); }
+            else if (mod < 75) { grade = 'B'; rating = 84 - (mod - 45); }
+            else { grade = 'C'; rating = 74 - (mod - 75); }
+            
+            const firstName = englishNames[i % englishNames.length];
+            const lastName = englishNames[(i + 5) % englishNames.length];
+            
+            additionalPlayers.push({
+                rank: rank++,
+                name: `球员${rank}`,
+                englishName: `${firstName} ${lastName}`,
+                country: country,
+                position: position,
+                team: team,
+                league: league,
+                rating: rating,
+                grade: grade
+            });
+        }
+        
+        // 将数据添加到表格
+        const tbody = document.querySelector('tbody');
+        additionalPlayers.forEach(player => {
+            const row = document.createElement('tr');
+            row.className = player.grade;
+            row.innerHTML = `
+                <td>${player.rank}</td>
+                <td>${player.name}</td>
+                <td>${player.englishName}</td>
+                <td>${player.country}</td>
+                <td>${player.position}</td>
+                <td>${player.team}</td>
+                <td>${player.league}</td>
+                <td>${player.rating}</td>
+                <td>${player.grade}</td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // 更新统计数据
+        const totalPlayers = 81 + additionalPlayers.length;
+        document.getElementById('totalPlayers').textContent = totalPlayers;
+        document.getElementById('topPlayers').textContent = Math.floor(totalPlayers * 0.1);
+        document.getElementById('avgRating').textContent = '82';
+    </script>
+</body>
+</html>

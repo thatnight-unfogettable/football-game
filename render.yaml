@@ -1,0 +1,18 @@
+database:
+  color: 191970
+  plan: free
+  stack: aruba
+
+services:
+  - type: web
+    name: football-bp-arena
+    env: node
+    region: oregon
+    buildCommand: npm install
+    startCommand: node server/render.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
