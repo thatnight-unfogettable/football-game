@@ -1,18 +1,25 @@
 import { PLAYER_DATA } from '../data/players.js';
 import { OnlineClient } from './online.js';
+import { COUNTRY_ZH, CLUB_ZH, LEAGUE_ZH } from '../data/i18n.js';
+import { NAME_ZH, NAME_ZH_EXTRA } from '../data/names-zh.js';
 
 const app = document.querySelector('#app');
 const ACTIVE_KEY = 'football-bp-active-v1';
 const HISTORY_KEY = 'football-bp-history-v1';
-const RULE_VERSION = 1;
-const ROUND_TYPES = ['FWD', 'DEF', 'MID', 'DEF', 'MID', 'FWD', 'DEF', 'MID', 'DEF', 'FWD'];
-const ROUND_HINTS = ['中锋', '边后卫', '组织中场', '中卫', '防守中场', '边锋', '中卫', '全能中场', '边后卫', '边锋'];
+const RULE_VERSION = 2;
+// 6轮规则：前4轮每轮选2人（16人卡池），后2轮每轮选1人（12人卡池）
+// 轮次结构：type='double'(选2人) 或 'single'(选1人)，category=位置类型，hint=推荐位置
+const ROUND_PLAN = [
+  { type:'double', category:'FWD', hint:'中锋/前锋' },
+  { type:'double', category:'DEF', hint:'后卫' },
+  { type:'double', category:'MID', hint:'中场' },
+  { type:'double', category:'MID', hint:'中场' },
+  { type:'single', category:'DEF', hint:'后卫' },
+  { type:'single', category:'FWD', hint:'前锋' },
+];
 const SLOT_ORDER = ['LW', 'ST', 'RW', 'CM1', 'CDM', 'CM2', 'LB', 'CB1', 'CB2', 'RB', 'GK'];
 const SLOT_LABELS = { LW: '左边锋', ST: '中锋', RW: '右边锋', CM1: '中前卫', CDM: '后腰', CM2: '中前卫', LB: '左后卫', CB1: '中卫', CB2: '中卫', RB: '右后卫', GK: '门将' };
 const POSITION_NAME = { FWD: '前锋', MID: '中场', DEF: '后卫', GK: '门将' };
-const NAME_ZH = {
-  'Kylian Mbappé':'基利安·姆巴佩','Rodri':'罗德里','Erling Haaland':'埃尔林·哈兰德','Jude Bellingham':'裘德·贝林厄姆','Vinícius Júnior':'维尼修斯·儒尼奥尔','Harry Kane':'哈里·凯恩','Kevin De Bruyne':'凯文·德布劳内','Mohamed Salah':'穆罕默德·萨拉赫','Lautaro Martínez':'劳塔罗·马丁内斯','Robert Lewandowski':'罗伯特·莱万多夫斯基','Virgil van Dijk':'维吉尔·范戴克','Thibaut Courtois':'蒂博·库尔图瓦','Alisson':'阿利松','Ederson':'埃德森','Rúben Dias':'鲁本·迪亚斯','Antonio Rüdiger':'安东尼奥·吕迪格','William Saliba':'威廉·萨利巴','Federico Valverde':'费德里科·巴尔韦德','Martin Ødegaard':'马丁·厄德高','Bruno Fernandes':'布鲁诺·费尔南德斯','Bernardo Silva':'贝尔纳多·席尔瓦','Bukayo Saka':'布卡约·萨卡','Phil Foden':'菲尔·福登','Jamal Musiala':'贾马尔·穆西亚拉','Florian Wirtz':'弗洛里安·维尔茨','Pedri':'佩德里','Gavi':'加维','Rodrygo':'罗德里戈','Antoine Griezmann':'安托万·格列兹曼','Victor Osimhen':'维克托·奥斯梅恩','Son Heung Min':'孙兴慜','Cristiano Ronaldo':'克里斯蒂亚诺·罗纳尔多','Lionel Messi':'利昂内尔·梅西','Neymar Jr':'内马尔','Declan Rice':'德克兰·赖斯','Joshua Kimmich':'约书亚·基米希','Achraf Hakimi':'阿什拉夫·哈基米','Theo Hernández':'特奥·埃尔南德斯','Mike Maignan':'迈克·迈尼昂','Gianluigi Donnarumma':'詹路易吉·多纳鲁马','Marc-André ter Stegen':'马克-安德烈·特尔施特根','Jan Oblak':'扬·奥布拉克','Marquinhos':'马尔基尼奥斯','Éder Militão':'埃德尔·米利唐','Ronald Araújo':'罗纳德·阿劳霍','João Cancelo':'若昂·坎塞洛','Trent Alexander-Arnold':'特伦特·亚历山大-阿诺德','Andrew Robertson':'安德鲁·罗伯逊','Alphonso Davies':'阿方索·戴维斯','Frenkie de Jong':'弗兰基·德容','İlkay Gündoğan':'伊尔卡伊·京多安','Nicolò Barella':'尼科洛·巴雷拉','Hakan Çalhanoğlu':'哈坎·恰尔汗奥卢','Toni Kroos':'托尼·克罗斯','Luka Modrić':'卢卡·莫德里奇','Aurélien Tchouaméni':'奥雷利安·楚阿梅尼','Eduardo Camavinga':'爱德华多·卡马文加','Rafael Leão':'拉斐尔·莱奥','Ousmane Dembélé':'奥斯曼·登贝莱','Khvicha Kvaratskhelia':'赫维恰·克瓦拉茨赫利亚','Julián Álvarez':'胡利安·阿尔瓦雷斯','Alexander Isak':'亚历山大·伊萨克','Darwin Núñez':'达尔文·努涅斯','Kai Havertz':'凯·哈弗茨','Gabriel Martinelli':'加布里埃尔·马丁内利','Cole Palmer':'科尔·帕尔默','Luis Díaz':'路易斯·迪亚斯','Leroy Sané':'勒鲁瓦·萨内'
-};
 const COURTOIS = { id: 'shared_courtois', name: '蒂博·库尔图瓦', englishName: 'Thibaut Courtois', rating: 90, position: 'GK', detailedPosition: 'GK', alternativePositions: [], club: '固定门将', league: '特殊卡', country: '比利时', grade: 'S' };
 let game = null;
 let selectedId = null;
@@ -32,62 +39,249 @@ function histories() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)
 function storeHistory(record) { const list = histories(); list.unshift(record); localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 20))); }
 function player(id) { return id === COURTOIS.id ? COURTOIS : game.players.find(p => p.id === id); }
 function gradeScore(grade) { return ({ SSS:8, SS:7, S:6, A:5, B:4, C:3, D:2, E:1 })[grade] || 3; }
+function translateValue(map, value) {
+  if (!value) return value;
+  if (/[\u3400-\u9fff]/.test(value)) return value;
+  return map[value] || map[value.trim()] || value;
+}
+const PLAYER_NAME_MAP = { ...NAME_ZH, ...NAME_ZH_EXTRA };
 function normalizePlayers() {
-  return PLAYER_DATA.map(p => ({ ...p, englishName:p.englishName || p.name, name:nameZh(p), alternativePositions:p.alternativePositions || inferAlternatives(p.detailedPosition), club:p.club || '未知俱乐部', league:p.league || '未知联赛', country:p.country || '未知国籍' }));
+  return PLAYER_DATA.map(p => ({
+    ...p,
+    englishName: p.englishName || p.name,
+    name: PLAYER_NAME_MAP[p.englishName] || PLAYER_NAME_MAP[p.name] || p.name,
+    alternativePositions: p.alternativePositions || inferAlternatives(p.detailedPosition),
+    club: translateValue(CLUB_ZH, p.club) || '未知俱乐部',
+    league: translateValue(LEAGUE_ZH, p.league) || '未知联赛',
+    country: translateValue(COUNTRY_ZH, p.country) || '未知国籍',
+  }));
 }
 function inferAlternatives(pos) {
   const map = { ST:['CF'], CF:['ST','CAM'], LW:['LM','RW'], RW:['RM','LW'], LM:['LW','CM'], RM:['RW','CM'], CAM:['CM','CF'], CM:['CAM','CDM'], CDM:['CM','CB'], LB:['LWB','CB'], RB:['RWB','CB'], LWB:['LB','LM'], RWB:['RB','RM'], CB:['LB','RB','CDM'], GK:[] };
   return map[pos] || [];
 }
-function generateRounds() {
-  const needs = { FWD:36, MID:36, DEF:48 };
-  const groups = {};
-  for (const [position, count] of Object.entries(needs)) {
-    const top = game.players.filter(p => p.position === position).sort((a,b) => b.rating - a.rating).slice(0, count);
-    const tierSize = Math.ceil(top.length / 4);
-    groups[position] = Array.from({length:4}, (_,i) => shuffle(top.slice(i*tierSize, (i+1)*tierSize)));
+function generateRoundPool(category, size, usedIds) {
+  // 从指定类别中按评分筛选前若干人，每层取3，确保球员不重复
+  const pool = game.players.filter(p => p.position === category && !usedIds.has(p.id)).sort((a,b) => b.rating - a.rating);
+  const top = pool.slice(0, size * 4);
+  const tierSize = Math.ceil(top.length / 4);
+  const tiers = Array.from({length:4}, (_,i) => shuffle(top.slice(i*tierSize, (i+1)*tierSize)));
+  const cards = [];
+  for (let i = 0; i < 4; i++) {
+    const take = Math.min(3, tiers[i].length);
+    cards.push(...tiers[i].splice(0, take));
   }
+  while (cards.length < size) {
+    const tier = tiers.find(t => t.length);
+    if (!tier) break;
+    cards.push(tier.shift());
+  }
+  // 补到 size（如不够则降级）
+  while (cards.length < size && pool.length > cards.length) {
+    const remain = pool.filter(p => !cards.some(c => c.id === p.id));
+    if (!remain.length) break;
+    cards.push(remain.shift());
+  }
+  return shuffle(cards).map(p => p.id);
+}
+function generateRounds() {
   const rounds = [];
-  for (const position of ROUND_TYPES) {
-    const cards = [];
-    for (const tier of groups[position]) cards.push(...tier.splice(0, Math.min(3, tier.length)));
-    while (cards.length < 12) { const tier = groups[position].find(t => t.length); if (!tier) break; cards.push(tier.shift()); }
-    rounds.push(shuffle(cards).map(p => p.id));
+  const used = new Set();
+  for (const round of ROUND_PLAN) {
+    const size = round.type === 'double' ? 16 : 12;
+    const pool = generateRoundPool(round.category, size, used);
+    rounds.push({ type: round.type, category: round.category, hint: round.hint, candidates: pool });
+    pool.forEach(id => used.add(id));
   }
   return rounds;
 }
 function newGame(settings) {
   const seedText = `${Date.now()}-${Math.random()}-${settings.difficulty}-${settings.personality}`;
-  game = { version:RULE_VERSION, screen:'order', phase:'order', seed:seedText, rng:hashSeed(seedText), settings, players:normalizePlayers(), rounds:[], round:0, banTurn:0, firstBan:'PLAYER', selected:null, candidates:[], bans:{PLAYER:[],AI:[]}, roundBans:[], picks:{PLAYER:[COURTOIS.id],AI:[COURTOIS.id]}, roundPicks:[], log:[], snapshots:[], lineup:{PLAYER:null,AI:null}, result:null };
+  game = {
+    version: RULE_VERSION,
+    screen: 'order',
+    phase: 'order',
+    seed: seedText,
+    rng: hashSeed(seedText),
+    settings,
+    players: normalizePlayers(),
+    rounds: [],
+    round: 0,
+    // double轮次状态：阶段 = prePick(各选1人) -> ban(轮流ban) -> postPick(再各选1人)
+    // single轮次状态：阶段 = ban(6次ban) -> pick(各选1人)
+    subPhase: null,
+    banTurn: 0,
+    firstBan: 'PLAYER', // 用于double轮的ban阶段；single轮独立
+    selected: null,
+    candidates: [],
+    bans: { PLAYER: [], AI: [] }, // 所有禁用
+    roundBans: [], // 当前轮次内已ban
+    picks: { PLAYER: [COURTOIS.id], AI: [COURTOIS.id] }, // 已选
+    prePicks: [], // double轮：双方先选的人（中间变量）
+    log: [],
+    snapshots: [],
+    lineup: { PLAYER: null, AI: null },
+    result: null,
+  };
   game.rounds = generateRounds();
   snapshot('对局开始'); save(); render();
 }
-function snapshot(label) { game.snapshots.push({ label, round:game.round, phase:game.phase, bans:clone(game.bans), picks:clone(game.picks), candidates:clone(game.candidates), log:clone(game.log) }); }
-function beginRound(order) {
-  game.firstBan = order; game.candidates = [...game.rounds[game.round]]; game.roundBans = []; game.roundPicks = []; game.banTurn = 0; game.phase = 'ban'; selectedId = null;
-  game.log.push({ type:'round', round:game.round+1, position:ROUND_TYPES[game.round], candidates:[...game.candidates], firstBan:order });
-  snapshot(`第${game.round+1}轮候选揭晓`); save(); render(); scheduleAI();
+function snapshot(label) {
+  game.snapshots.push({
+    label,
+    round: game.round,
+    phase: game.phase,
+    subPhase: game.subPhase,
+    bans: clone(game.bans),
+    picks: clone(game.picks),
+    prePicks: clone(game.prePicks || []),
+    candidates: clone(game.candidates),
+    log: clone(game.log),
+  });
 }
-function actorForBan() { return game.banTurn % 2 === 0 ? game.firstBan : (game.firstBan === 'PLAYER' ? 'AI' : 'PLAYER'); }
+function beginRound(order) {
+  const roundInfo = game.rounds[game.round];
+  game.firstBan = order;
+  game.candidates = [...roundInfo.candidates];
+  game.roundBans = [];
+  game.prePicks = [];
+  game.banTurn = 0;
+  if (roundInfo.type === 'double') {
+    game.phase = 'prePick';
+    game.subPhase = 'prePick';
+    // 先选的一方（玩家选择order=PLAYER时，PLAYER先选）
+    game.firstPicker = order;
+  } else {
+    game.phase = 'ban';
+    game.subPhase = 'ban';
+    game.firstBan = order;
+  }
+  selectedId = null;
+  game.log.push({ type: 'round', round: game.round + 1, info: roundInfo, candidates: [...game.candidates], firstBan: order, mode: roundInfo.type });
+  snapshot(`第${game.round+1}轮候选揭晓（${roundInfo.type==='double'?'16人双选':'12人单选'}）`);
+  save(); render(); scheduleAI();
+}
 function currentActor() {
-  if (game.phase === 'ban') return actorForBan();
-  if (game.phase === 'pick') { const lastBanner = game.roundBans[5]?.actor; return game.roundPicks.length === 0 ? lastBanner : (lastBanner === 'PLAYER' ? 'AI' : 'PLAYER'); }
+  const roundInfo = game.rounds[game.round];
+  if (!roundInfo) return null;
+  if (game.subPhase === 'prePick') {
+    // 双方轮流选1人，先选者先选第二个
+    const taken = (game.prePicks || []).length;
+    if (taken === 0) return game.firstPicker;
+    return game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER';
+  }
+  if (game.subPhase === 'ban') {
+    return game.banTurn % 2 === 0 ? game.firstBan : (game.firstBan === 'PLAYER' ? 'AI' : 'PLAYER');
+  }
+  if (game.subPhase === 'postPick') {
+    // postPick：先选者先选（与prePick一致）
+    const taken = (game.prePicks || []).length;
+    // prePick已经2人（prePicks[0..1]），postPick不存prePicks，而是用专门的 postPicks
+    const postTaken = (game.postPicks || []).length;
+    if (postTaken === 0) return game.firstPicker;
+    return game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER';
+  }
   return null;
 }
-function available() { const removed = new Set([...game.roundBans.map(x=>x.id), ...game.roundPicks.map(x=>x.id)]); return game.candidates.filter(id => !removed.has(id)); }
+function available() {
+  const removed = new Set([
+    ...game.roundBans.map(x=>x.id),
+    ...(game.prePicks || []),
+    ...(game.postPicks || []),
+  ]);
+  return game.candidates.filter(id => !removed.has(id));
+}
 function confirmPlayerAction() {
   if (!selectedId || currentActor() !== 'PLAYER') return;
-  if (game.phase === 'ban') applyBan('PLAYER', selectedId, '玩家决策'); else applyPick('PLAYER', selectedId, '玩家选择');
+  if (game.subPhase === 'prePick' || game.subPhase === 'postPick') {
+    applyPrePick('PLAYER', selectedId, '玩家选择');
+  } else if (game.subPhase === 'ban') {
+    applyBan('PLAYER', selectedId, '玩家决策');
+  }
+}
+function applyPrePick(actor, id, reason) {
+  if (!available().includes(id)) return;
+  if (game.subPhase === 'prePick') {
+    if (!game.prePicks) game.prePicks = [];
+    game.prePicks.push(id);
+    game.picks[actor].push(id);
+    game.log.push({ type: 'prePick', round: game.round + 1, actor, id, reason });
+    beep('select');
+    snapshot(`${actor==='PLAYER'?'玩家':'AI'}初始选择${nameZh(player(id))}`);
+    if (game.prePicks.length >= 2) {
+      // 切换到ban阶段
+      game.subPhase = 'ban';
+      game.phase = 'ban';
+      game.banTurn = 0;
+      // 先选者获得先禁权（与prePick先后手一致）
+      // 但我们的实现中先选者先ban是合理的设计：先选者已经建立了阵容，可以ban对手想选的
+      game.firstBan = game.firstPicker;
+      save(); render(); scheduleAI();
+    } else {
+      save(); render(); scheduleAI();
+    }
+  } else if (game.subPhase === 'postPick') {
+    if (!game.postPicks) game.postPicks = [];
+    game.postPicks.push(id);
+    game.picks[actor].push(id);
+    game.log.push({ type: 'postPick', round: game.round + 1, actor, id, reason });
+    beep('select');
+    snapshot(`${actor==='PLAYER'?'玩家':'AI'}再选${nameZh(player(id))}`);
+    if (game.postPicks.length >= 2) {
+      game.subPhase = 'summary';
+      game.phase = 'summary';
+      save(); render();
+    } else {
+      save(); render(); scheduleAI();
+    }
+  }
 }
 function applyBan(actor, id, reason) {
-  if (!available().includes(id) || game.phase !== 'ban') return;
-  game.roundBans.push({ actor,id,reason }); game.bans[actor].push(id); game.log.push({ type:'ban',round:game.round+1,actor,id,reason }); game.banTurn++; selectedId=null; beep('ban'); snapshot(`${actor==='PLAYER'?'玩家':'AI'}禁用${nameZh(player(id))}`);
-  if (game.banTurn >= 6) game.phase='pick'; save(); render(); scheduleAI();
+  if (!available().includes(id) || game.subPhase !== 'ban') return;
+  game.roundBans.push({ actor, id, reason });
+  game.bans[actor].push(id);
+  game.log.push({ type: 'ban', round: game.round + 1, actor, id, reason });
+  game.banTurn++;
+  selectedId = null;
+  beep('ban');
+  snapshot(`${actor==='PLAYER'?'玩家':'AI'}禁用${nameZh(player(id))}`);
+  const roundInfo = game.rounds[game.round];
+  if (roundInfo.type === 'double') {
+    // double轮：ban3次后切换到postPick
+    if (game.banTurn >= 6) {
+      game.subPhase = 'postPick';
+      game.phase = 'postPick';
+      game.postPicks = [];
+      // 进入postPick阶段
+    }
+  } else {
+    // single轮：ban6次后切换到pick（各选1人）
+    if (game.banTurn >= 6) {
+      game.subPhase = 'pick';
+      game.phase = 'pick';
+      game.firstPicker = game.roundBans[5]?.actor === 'PLAYER' ? 'AI' : 'PLAYER';
+      game.postPicks = [];
+    }
+  }
+  save(); render(); scheduleAI();
 }
 function applyPick(actor, id, reason) {
-  if (!available().includes(id) || game.phase !== 'pick') return;
-  game.roundPicks.push({actor,id,reason}); game.picks[actor].push(id); game.log.push({type:'pick',round:game.round+1,actor,id,reason}); selectedId=null; beep('select'); snapshot(`${actor==='PLAYER'?'玩家':'AI'}选择${nameZh(player(id))}`);
-  if (game.roundPicks.length >= 2) { game.phase='summary'; save(); render(); } else { save(); render(); scheduleAI(); }
+  // single轮的pick阶段（保兼容）
+  if (!available().includes(id) || game.subPhase !== 'pick') return;
+  if (!game.postPicks) game.postPicks = [];
+  game.postPicks.push(id);
+  game.picks[actor].push(id);
+  game.log.push({ type: 'pick', round: game.round + 1, actor, id, reason });
+  selectedId = null;
+  beep('select');
+  snapshot(`${actor==='PLAYER'?'玩家':'AI'}选择${nameZh(player(id))}`);
+  if (game.postPicks.length >= 2) {
+    game.subPhase = 'summary';
+    game.phase = 'summary';
+    save(); render();
+  } else {
+    save(); render(); scheduleAI();
+  }
 }
 function candidateThreat(id, actor, action) {
   const p = player(id); const own = game.picks[actor].map(player); const enemy = game.picks[actor==='AI'?'PLAYER':'AI'].map(player);
@@ -98,17 +292,52 @@ function candidateThreat(id, actor, action) {
   return p.rating + (personality==='chemistry'?ownLinks*1.3:ownLinks*.35) + (personality==='counter'?enemyLinks*.25:0);
 }
 function aiChoice(action) {
-  const ids=available(); const difficulty=game.settings.difficulty; const mistake={easy:.30,normal:.15,hard:.05}[difficulty];
-  if (rng()<mistake) return ids[Math.floor(rng()*ids.length)];
-  const scored=ids.map(id=>({id,score:candidateThreat(id,'AI',action)})).sort((a,b)=>b.score-a.score);
-  if (difficulty==='hard') return scored.slice(0,Math.min(5,scored.length)).map((x,i)=>({...x,score:x.score+(5-i)*.15})).sort((a,b)=>b.score-a.score)[0].id;
+  const ids = available();
+  const difficulty = game.settings.difficulty;
+  const mistake = {easy:.30, normal:.15, hard:.05}[difficulty];
+  if (ids.length === 0) return null;
+  if (rng() < mistake) return ids[Math.floor(rng()*ids.length)];
+  const scored = ids.map(id => ({id, score: candidateThreat(id, 'AI', action)})).sort((a,b) => b.score - a.score);
+  if (difficulty === 'hard') return scored.slice(0, Math.min(5, scored.length)).map((x,i) => ({...x, score: x.score + (5-i)*.15})).sort((a,b) => b.score - a.score)[0].id;
   return scored[0].id;
 }
 function scheduleAI() {
-  clearTimeout(aiTimer); if (currentActor()!=='AI') return;
-  aiTimer=setTimeout(()=>{ const action=game.phase; const id=aiChoice(action); const p=player(id); const reason=action==='ban'?(p.rating>=88?'高评分威胁':game.settings.personality==='counter'?'阻断你的组合':'控制候选池'):(p.rating>=88?'纸面核心':game.settings.personality==='chemistry'?'增强化学反应':'提升综合实力'); if(action==='ban')applyBan('AI',id,reason);else applyPick('AI',id,reason); }, {fast:250,normal:750,slow:1400}[game.settings.speed]);
+  clearTimeout(aiTimer);
+  const actor = currentActor();
+  if (actor !== 'AI') return;
+  aiTimer = setTimeout(() => {
+    const sub = game.subPhase;
+    let action = sub;
+    if (sub === 'prePick' || sub === 'postPick') action = 'pick';
+    if (sub === 'ban') action = 'ban';
+    const id = aiChoice(action);
+    if (!id) return;
+    const p = player(id);
+    const reason = sub === 'ban'
+      ? (p.rating >= 88 ? '高评分威胁' : (game.settings.personality === 'counter' ? '阻断你的组合' : '控制候选池'))
+      : (p.rating >= 88 ? '纸面核心' : (game.settings.personality === 'chemistry' ? '增强化学反应' : '提升综合实力'));
+    if (sub === 'prePick' || sub === 'postPick') {
+      applyPrePick('AI', id, reason);
+    } else if (sub === 'ban') {
+      applyBan('AI', id, reason);
+    } else if (sub === 'pick') {
+      applyPick('AI', id, reason);
+    }
+  }, {fast:250, normal:750, slow:1400}[game.settings.speed]);
 }
-function continueRound() { if (game.round >= 9) { finalizeLineups(); return; } game.round++; game.phase='order'; game.screen='order'; save(); render(); }
+function continueRound() {
+  // 重置轮次状态
+  game.prePicks = [];
+  game.postPicks = [];
+  game.roundBans = [];
+  game.banTurn = 0;
+  game.selected = null;
+  if (game.round >= game.rounds.length - 1) { finalizeLineups(); return; }
+  game.round++;
+  game.phase = 'order';
+  game.screen = 'order';
+  save(); render();
+}
 function roleFit(p, slot) {
   if (slot==='GK') return p.position==='GK'?1:0;
   const target = slot.replace(/[12]/g,''); const pos=p.detailedPosition || p.position; const alt=p.alternativePositions||[];
@@ -125,20 +354,51 @@ function bestAssignment(ids) {
   return result;
 }
 function lineupMetrics(assignment) {
-  const entries=SLOT_ORDER.map(slot=>({slot,p:player(assignment[slot]),fit:roleFit(player(assignment[slot]),slot)}));
-  const lineAverage=line=>{const rows=entries.filter(x=>x.p.position===line);return rows.reduce((s,x)=>s+x.p.rating*x.fit,0)/rows.length;};
-  const paper=lineAverage('GK')*.1+lineAverage('DEF')*.3+lineAverage('MID')*.3+lineAverage('FWD')*.3;
-  const nonGk=entries.filter(x=>x.slot!=='GK'); const slotFit=nonGk.reduce((s,x)=>s+x.fit,0)/10*32;
-  const roles={FWD:['LW','ST','RW'],MID:['CM1','CDM','CM2'],DEF:['LB','CB1','CB2','RB']}; let template=0;
-  Object.values(roles).forEach(slots=>{if(slots.every(slot=>roleFit(player(assignment[slot]),slot)>=.96))template+=8/3;});
-  const groupScore=(field,thresholds,cap)=>{const counts={};nonGk.forEach(x=>counts[x.p[field]]=(counts[x.p[field]]||0)+1);let total=0;Object.values(counts).forEach(n=>{let best=0;thresholds.forEach(([need,score])=>{if(n>=need)best=score;});total+=best;});return Math.min(cap,total);};
-  const club=groupScore('club',[[2,4],[3,8],[4,12]],20), league=groupScore('league',[[2,3],[4,7],[6,11]],15), nation=groupScore('country',[[2,3],[3,6],[5,10]],15);
-  const ratings=nonGk.map(x=>x.p.rating); const leaders=Math.min(6,ratings.filter(r=>r>=85).length*2); const gap=Math.max(...ratings)-Math.min(...ratings); const balance=gap<=8?4:gap<=12?3:gap<=16?2:gap<=20?1:0;
-  const chemistry=Math.min(100,slotFit+template+club+league+nation+leaders+balance); const overall=paper*.7+chemistry*.3;
-  return {paper,chemistry,overall,lines:{FWD:lineAverage('FWD'),MID:lineAverage('MID'),DEF:lineAverage('DEF'),GK:90},parts:{slotFit,template,club,league,nation,grade:leaders+balance}};
+  const entries = SLOT_ORDER.map(slot => ({slot, p: player(assignment[slot]), fit: roleFit(player(assignment[slot]), slot)}));
+  const lineAverage = line => {
+    const rows = entries.filter(x => x.p.position === line);
+    if (rows.length === 0) return 0;
+    return rows.reduce((s,x) => s + x.p.rating * x.fit, 0) / rows.length;
+  };
+  // paper: 0-100 制
+  const paper = lineAverage('GK')*.1 + lineAverage('DEF')*.3 + lineAverage('MID')*.3 + lineAverage('FWD')*.3;
+  const nonGk = entries.filter(x => x.slot !== 'GK');
+  const slotFit = nonGk.reduce((s,x) => s + x.fit, 0) / 10 * 32;
+  const roles = {FWD:['LW','ST','RW'], MID:['CM1','CDM','CM2'], DEF:['LB','CB1','CB2','RB']};
+  let template = 0;
+  Object.values(roles).forEach(slots => {
+    if (slots.every(slot => roleFit(player(assignment[slot]), slot) >= .96)) template += 8/3;
+  });
+  const groupScore = (field, thresholds, cap) => {
+    const counts = {};
+    nonGk.forEach(x => counts[x.p[field]] = (counts[x.p[field]] || 0) + 1);
+    let total = 0;
+    Object.values(counts).forEach(n => {
+      let best = 0;
+      thresholds.forEach(([need, score]) => { if (n >= need) best = score; });
+      total += best;
+    });
+    return Math.min(cap, total);
+  };
+  const club = groupScore('club', [[2,4],[3,8],[4,12]], 20);
+  const league = groupScore('league', [[2,3],[4,7],[6,11]], 15);
+  const nation = groupScore('country', [[2,3],[3,6],[5,10]], 15);
+  const ratings = nonGk.map(x => x.p.rating);
+  const leaders = Math.min(6, ratings.filter(r => r >= 85).length * 2);
+  const gap = Math.max(...ratings) - Math.min(...ratings);
+  const balance = gap <= 8 ? 4 : gap <= 12 ? 3 : gap <= 16 ? 2 : gap <= 20 ? 1 : 0;
+  const chemistry = Math.min(100, slotFit + template + club + league + nation + leaders + balance);
+  // 综合实力 = (paper + chemistry) / 2
+  const overall = (paper + chemistry) / 2;
+  return {
+    paper,
+    chemistry,
+    overall,
+    lines: { FWD: lineAverage('FWD'), MID: lineAverage('MID'), DEF: lineAverage('DEF'), GK: 90 },
+    parts: { slotFit, template, club, league, nation, grade: leaders + balance }
+  };
 }
-function finalizeLineups() { game.lineup.PLAYER=bestAssignment(game.picks.PLAYER); game.lineup.AI=bestAssignment(game.picks.AI); game.phase='lineup'; game.screen='lineup'; snapshot('阵容自动排布'); save(); render(); }
-function swapSlots(a,b) { if(a==='GK'||b==='GK')return; [game.lineup.PLAYER[a],game.lineup.PLAYER[b]]=[game.lineup.PLAYER[b],game.lineup.PLAYER[a]]; selectedId=null; save(); render(); }
+function finalizeLineups() { game.lineup.PLAYER = bestAssignment(game.picks.PLAYER); game.lineup.AI = bestAssignment(game.picks.AI); game.phase = 'lineup'; game.screen = 'lineup'; snapshot('阵容自动排布'); save(); render(); }
 function normalRandom() { const u=1-rng(),v=1-rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
 function poisson(lambda) { const l=Math.exp(-lambda);let p=1,k=0;do{k++;p*=rng();}while(p>l&&k<10);return k-1; }
 function playSeries() {
@@ -153,11 +413,45 @@ function setScreen(screen) { game ||= {}; game.screen=screen; render(); }
 function reset() { clearTimeout(aiTimer); game=null; selectedId=null; localStorage.removeItem(ACTIVE_KEY); render(); }
 function rematch() { const s={...game.settings}; newGame(s); }
 
-function card(id,{disabled=false,selected=false,clickable=true}={}) { const p=player(id); const threat=game?.phase==='ban'&&game.picks.PLAYER.length>1?`化学预估 +${Math.max(0,Math.round(candidateThreat(id,'PLAYER','pick')-p.rating))}～+${Math.max(2,Math.round(candidateThreat(id,'PLAYER','pick')-p.rating)+3)}`:''; return `<button class="player-card grade-${p.grade} ${disabled?'disabled':''} ${selected?'selected':''}" data-card="${id}" ${disabled||!clickable?'disabled':''}><span class="card-grade">${p.grade}</span><b class="card-rating">${p.rating}</b><span class="avatar">${esc(nameZh(p).slice(0,1))}</span><strong>${esc(nameZh(p))}</strong><small>${esc(p.englishName)}</small><div>${esc(p.club)} · ${esc(p.league)}</div><div>${esc(p.country)} · ${esc(p.detailedPosition||p.position)}</div>${threat?`<em>${threat}</em>`:''}</button>`; }
-function roster(side) { const picks=game.picks[side]; return `<aside class="roster ${side.toLowerCase()}"><h3>${side==='PLAYER'?'你的阵容':'AI阵容'}</h3><div class="roster-score">当前纸面 ${currentPaper(side).toFixed(1)}</div><div class="mini-slots"><div class="mini-player fixed">GK ${COURTOIS.name} · 90</div>${picks.filter(id=>id!==COURTOIS.id).map(id=>`<div class="mini-player">${POSITION_NAME[player(id).position]} ${esc(nameZh(player(id)))} <b>${player(id).rating}</b></div>`).join('')}${Array(Math.max(0,10-(picks.length-1))).fill('<div class="mini-player empty">待选择</div>').join('')}</div></aside>`; }
-function currentPaper(side) { const cards=game.picks[side].map(player); if(cards.length===1)return 90; return cards.reduce((s,p)=>s+p.rating,0)/cards.length; }
-function bansPanel() { const row=side=>`<div class="ban-row"><b>${side==='PLAYER'?'玩家禁用':'AI禁用'}</b>${game.bans[side].slice(-3).map((id,i)=>`<span>${i+1}. ${esc(nameZh(player(id)))}</span>`).join('')||'<span>暂无</span>'}</div>`; return `<section class="ban-panel">${row('PLAYER')}${row('AI')}</section>`; }
-function header() { return `<header class="app-header"><div class="logo">DRAFT<span>XI</span></div><div class="round-meta">第 ${Math.min(game.round+1,10)} / 10 轮 · ${POSITION_NAME[ROUND_TYPES[game.round]]||'结算'} <small>${ROUND_HINTS[game.round]||''}</small></div><button class="ghost" data-home>退出</button></header>`; }
+function card(id, {disabled=false, selected=false, clickable=true} = {}) {
+  const p = player(id);
+  const threat = (game?.subPhase === 'ban' && game.picks.PLAYER.length > 1)
+    ? `化学预估 +${Math.max(0,Math.round(candidateThreat(id,'PLAYER','pick')-p.rating))}～+${Math.max(2,Math.round(candidateThreat(id,'PLAYER','pick')-p.rating)+3)}`
+    : '';
+  return `<button class="player-card grade-${p.grade} ${disabled?'disabled':''} ${selected?'selected':''}" data-card="${id}" ${disabled||!clickable?'disabled':''}><span class="card-grade">${p.grade}</span><b class="card-rating">${p.rating}</b><span class="avatar">${esc((p.name||p.englishName).slice(0,1))}</span><strong>${esc(p.name)}</strong><small>${esc(p.englishName||'')}</small><div>${esc(p.club)} · ${esc(p.league)}</div><div>${esc(p.country)} · ${esc(p.detailedPosition||p.position)}</div>${threat?`<em>${threat}</em>`:''}</button>`;
+}
+function roster(side) {
+  const picks = game.picks[side];
+  const roundsTotal = game.rounds.length;
+  const total = 10;
+  const remaining = Math.max(0, total - (picks.length - 1));
+  return `<aside class="roster ${side.toLowerCase()}"><h3>${side==='PLAYER'?'你的阵容':'AI阵容'}</h3><div class="roster-score">当前纸面 ${currentPaper(side).toFixed(1)}</div><div class="mini-slots"><div class="mini-player fixed"><div class="mini-row"><b>GK</b><span>${esc(COURTOIS.name)}</span><span class="mini-rating">90</span></div><div class="mini-meta">${esc(COURTOIS.club)} · ${esc(COURTOIS.country)}</div></div>${picks.filter(id=>id!==COURTOIS.id).map(id=>{
+    const p = player(id);
+    return `<div class="mini-player"><div class="mini-row"><b>${esc(p.detailedPosition||p.position)}</b><span>${esc(p.name)}</span><span class="mini-rating">${p.rating}</span></div><div class="mini-meta">${esc(p.club)} · ${esc(p.country)}</div></div>`;
+  }).join('')}${Array(remaining).fill('<div class="mini-player empty">待选择</div>').join('')}</div></aside>`;
+}
+function currentPaper(side) {
+  const cards = game.picks[side].map(player);
+  if (cards.length === 1) return 90;
+  return cards.reduce((s,p) => s + p.rating, 0) / cards.length;
+}
+function bansPanel() {
+  const row = side => {
+    const items = game.bans[side].slice(-3).map((id, i) => {
+      const p = player(id);
+      return `<div class="ban-item"><span class="ban-idx">${i+1}</span><div class="ban-info"><b>${esc(p.name)}</b><small>${esc(p.club)} · ${esc(p.country)}</small></div><span class="ban-rating">${p.rating}</span></div>`;
+    }).join('') || '<span class="ban-empty">暂无</span>';
+    return `<div class="ban-row"><b>${side==='PLAYER'?'玩家禁用':'AI禁用'}</b>${items}</div>`;
+  };
+  return `<section class="ban-panel">${row('PLAYER')}${row('AI')}</section>`;
+}
+function header() {
+  const roundInfo = game.rounds[game.round];
+  const positionLabel = roundInfo ? POSITION_NAME[roundInfo.category] : '结算';
+  const hint = roundInfo?.hint || '';
+  const roundNo = Math.min(game.round + 1, game.rounds.length);
+  return `<header class="app-header"><div class="logo">DRAFT<span>XI</span></div><div class="round-meta">第 ${roundNo} / ${game.rounds.length} 轮 · ${positionLabel} <small>${hint}</small></div><button class="ghost" data-home>退出</button></header>`;
+}
 function menu() { const active=localStorage.getItem(ACTIVE_KEY); return `<div class="landing"><div class="landing-copy"><span class="kicker">BAN · PICK · BUILD</span><h1>禁掉威胁<br><em>选出你的最强十一人</em></h1><p>十轮足球BP。每轮12人、六次禁用、双方各取一人。纸面实力与化学反应共同决定三局两胜。</p><div class="menu-actions"><button class="primary" data-new>开始人机对战</button><button class="accent" data-online>好友在线对战</button>${active?'<button data-resume>继续未完成对局</button>':''}<button data-history>最近20局</button><a href="legacy/index.html">旧经营模式</a></div></div><div class="hero-board"><div class="versus"><span>YOU</span><b>VS</b><span>AI / 好友</span></div><div class="rule-cards"><article><b>12</b><span>每轮候选</span></article><article><b>6</b><span>交替禁用</span></article><article><b>11</b><span>最终阵容</span></article></div></div></div>`; }
 function onlineLobby() { 
   const roomFromUrl=new URLSearchParams(location.search).get('room')||'';
@@ -221,13 +515,75 @@ function onlineLobby() {
     </aside>
   </div>`; 
 }
-function setup() { return `<div class="setup-page"><section><span class="kicker">MATCH SETTINGS</span><h1>创建人机对局</h1><label>AI难度<select id="difficulty"><option value="easy">简单 · 30%失误</option><option value="normal" selected>普通 · 15%失误</option><option value="hard">困难 · 五步评估</option></select></label><label>AI性格<select id="personality"><option value="power">实力型</option><option value="chemistry">化学反应型</option><option value="counter">针对型</option></select></label><label>动画速度<select id="speed"><option value="fast">快速</option><option value="normal" selected>正常</option><option value="slow">慢速</option></select></label><label class="check"><input id="audio" type="checkbox" checked> 开启基础音效</label><button class="primary" data-start>进入BP</button><button data-cancel>返回</button></section><aside><h2>固定规则</h2><p>4-3-3 · 双方固定90分库尔图瓦</p><p>纸面实力70% + 化学反应30%</p><p>玩家每轮自由选择先禁或后禁</p><p>后禁方执行第6禁并获得先选权</p></aside></div>`; }
-function orderScreen() { return `<div class="game">${header()}<main class="order-choice"><span class="kicker">ROUND ${game.round+1}</span><h1>${POSITION_NAME[ROUND_TYPES[game.round]]}轮 · 推荐${ROUND_HINTS[game.round]}</h1><p>先禁方拥有第1、3、5禁；后禁方拥有第2、4、6禁，并在禁满6人后先选。</p><div class="choice-grid"><button data-order="PLAYER"><b>我要先禁</b><span>优先封锁最危险球员</span></button><button class="accent" data-order="AI"><b>我要后禁</b><span>执行第6禁并获得先选权</span></button></div><div class="fixed-gk">双方门将已锁定：蒂博·库尔图瓦 · 90</div></main></div>`; }
-function bpScreen() { const actor=currentActor(); const removed=new Set([...game.roundBans.map(x=>x.id),...game.roundPicks.map(x=>x.id)]); const action=game.phase==='ban'?'禁用':'选择'; return `<div class="game">${header()}<div class="bp-layout">${roster('PLAYER')}<main class="board"><div class="turn-banner ${actor?.toLowerCase()}"><b>${actor==='PLAYER'?'你的回合':'AI思考中'}</b><span>${game.phase==='ban'?`第${game.banTurn+1}/6禁用`:`第${game.roundPicks.length+1}/2选择`} · ${action}一名${POSITION_NAME[ROUND_TYPES[game.round]]}</span></div>${bansPanel()}<div class="candidate-grid">${game.candidates.map(id=>card(id,{disabled:removed.has(id),selected:selectedId===id,clickable:actor==='PLAYER'})).join('')}</div><footer><span>${selectedId?`已选中：${esc(nameZh(player(selectedId)))}`:'先查看卡牌信息，再确认操作'}</span><button class="primary" data-confirm ${!selectedId||actor!=='PLAYER'?'disabled':''}>确认${action}</button></footer></main>${roster('AI')}</div></div>`; }
-function summaryScreen() { const pp=game.roundPicks.find(x=>x.actor==='PLAYER'),ap=game.roundPicks.find(x=>x.actor==='AI'); return `<div class="game">${header()}<main class="round-summary"><span class="kicker">ROUND COMPLETE</span><h1>第${game.round+1}轮选人完成</h1><div class="duel-picks"><article>${card(pp.id,{clickable:false})}<h3>你的选择</h3></article><b>VS</b><article>${card(ap.id,{clickable:false})}<h3>AI选择</h3></article></div><div class="summary-stats"><span>你的纸面 ${currentPaper('PLAYER').toFixed(1)}</span><span>AI纸面 ${currentPaper('AI').toFixed(1)}</span><span>下一轮 ${game.round<9?POSITION_NAME[ROUND_TYPES[game.round+1]]:'阵容排布'}</span></div><button class="primary" data-next>${game.round<9?'进入下一轮':'进入阵容调整'}</button></main></div>`; }
-function pitch(side,editable=false) { const assignment=game.lineup[side]; return `<div class="pitch">${SLOT_ORDER.map(slot=>{const p=player(assignment[slot]);return `<button class="pitch-slot slot-${slot.toLowerCase()} ${selectedId===slot?'selected':''}" data-slot="${slot}" ${!editable||slot==='GK'?'disabled':''}><small>${SLOT_LABELS[slot]}</small><b>${esc(nameZh(p))}</b><span>${p.rating} · 适配${Math.round(roleFit(p,slot)*100)}%</span></button>`;}).join('')}</div>`; }
-function metricPanel(side) { const m=lineupMetrics(game.lineup[side]); return `<div class="metric-panel"><div><span>纸面实力</span><b>${m.paper.toFixed(1)}</b></div><div><span>化学反应</span><b>${m.chemistry.toFixed(1)}</b></div><div class="overall"><span>综合实力</span><b>${m.overall.toFixed(1)}</b></div><small>前锋 ${m.lines.FWD.toFixed(1)} · 中场 ${m.lines.MID.toFixed(1)} · 后卫 ${m.lines.DEF.toFixed(1)}</small></div>`; }
-function lineupScreen() { return `<div class="game">${header()}<main class="lineup-page"><div class="section-title"><div><span class="kicker">FINAL LINEUP</span><h1>调整你的4-3-3</h1><p>点击两个非门将槽位即可交换球员。AI阵容已完成独立最优排布。</p></div><button class="primary" data-play>确认阵容并开始三局两胜</button></div><div class="lineup-compare"><section><h2>玩家阵容</h2>${pitch('PLAYER',true)}${metricPanel('PLAYER')}</section><section><h2>AI阵容</h2>${pitch('AI')}${metricPanel('AI')}</section></div></main></div>`; }
+function setup() {
+  return `<div class="setup-page"><section><span class="kicker">MATCH SETTINGS</span><h1>创建人机对局</h1><label>AI难度<select id="difficulty"><option value="easy">简单 · 30%失误</option><option value="normal" selected>普通 · 15%失误</option><option value="hard">困难 · 五步评估</option></select></label><label>AI性格<select id="personality"><option value="power">实力型</option><option value="chemistry">化学反应型</option><option value="counter">针对型</option></select></label><label>动画速度<select id="speed"><option value="fast">快速</option><option value="normal" selected>正常</option><option value="slow">慢速</option></select></label><label class="check"><input id="audio" type="checkbox" checked> 开启基础音效</label><button class="primary" data-start>进入BP</button><button data-cancel>返回</button></section><aside><h2>固定规则</h2><p>4-3-3 · 双方固定90分库尔图瓦</p><p>综合实力 = (纸面 + 化学) / 2</p><p>共6轮：前4轮双选16人卡池，后2轮单选12人卡池</p><p>玩家每轮自由选择先选或后选</p><p>先选者获得先禁权</p></aside></div>`;
+}
+function orderScreen() {
+  const roundInfo = game.rounds[game.round];
+  const isDouble = roundInfo.type === 'double';
+  const desc = isDouble
+    ? '本轮双选：16人卡池，先各自选1人，然后轮流ban 3次（共6ban），最后再各选1人。先选者可获得先禁权。'
+    : '本轮单选：12人卡池，轮流ban 6次，最后再各选1人。';
+  return `<div class="game">${header()}<main class="order-choice"><span class="kicker">ROUND ${game.round+1} · ${isDouble?'双选':'单选'}</span><h1>${POSITION_NAME[roundInfo.category]}轮 · 推荐${roundInfo.hint}</h1><p>${desc}</p><div class="choice-grid"><button data-order="PLAYER"><b>我要先选</b><span>优先拿到核心球员</span></button><button class="accent" data-order="AI"><b>我要后选</b><span>观察对手选择后应对</span></button></div><div class="fixed-gk">双方门将已锁定：蒂博·库尔图瓦 · 90</div></main></div>`;
+}
+function bpScreen() {
+  const actor = currentActor();
+  const removed = new Set([
+    ...game.roundBans.map(x => x.id),
+    ...(game.prePicks || []),
+    ...(game.postPicks || []),
+  ]);
+  const sub = game.subPhase;
+  let title, desc;
+  if (sub === 'prePick') {
+    const taken = (game.prePicks || []).length;
+    title = '初始选择';
+    desc = `请选择你的核心球员（第${taken+1}/2人）`;
+  } else if (sub === 'ban') {
+    const roundInfo = game.rounds[game.round];
+    const banTotal = roundInfo.type === 'double' ? 6 : 6;
+    title = '禁用阶段';
+    desc = `第${game.banTurn+1}/${banTotal}禁用 · 阻止对手选到强力球员`;
+  } else if (sub === 'postPick') {
+    const taken = (game.postPicks || []).length;
+    title = '二次选择';
+    desc = `请选择剩余强力球员（第${taken+1}/2人）`;
+  } else if (sub === 'pick') {
+    const taken = (game.postPicks || []).length;
+    title = '选择阶段';
+    desc = `请从剩余${available().length+1}人中选择（第${taken+1}/1人）`;
+  }
+  const actionText = (sub === 'prePick' || sub === 'postPick' || sub === 'pick') ? '选择' : '禁用';
+  return `<div class="game">${header()}<div class="bp-layout">${roster('PLAYER')}<main class="board"><div class="turn-banner ${actor?.toLowerCase()}"><b>${actor==='PLAYER'?'你的回合':'AI思考中'}</b><span>${title} · ${desc}</span></div>${bansPanel()}<div class="candidate-grid">${game.candidates.map(id => card(id, {disabled: removed.has(id), selected: selectedId === id, clickable: actor === 'PLAYER'})).join('')}</div><footer><span>${selectedId ? `已选中：${esc(player(selectedId).name)}` : '先查看卡牌信息，再确认操作'}</span><button class="primary" data-confirm ${!selectedId || actor !== 'PLAYER' ? 'disabled' : ''}>确认${actionText}</button></footer></main>${roster('AI')}</div></div>`;
+}
+function summaryScreen() {
+  const roundInfo = game.rounds[game.round];
+  const isDouble = roundInfo.type === 'double';
+  const pp = (game.prePicks && game.postPicks) ? [...game.prePicks, ...game.postPicks] : [];
+  const preP = (game.prePicks || []).map(id => ({actor: id === (game.prePicks?.[0]) ? 'PLAYER' : 'AI', id}));
+  const postP = (game.postPicks || []).map(id => ({actor: id === (game.postPicks?.[0]) ? 'PLAYER' : 'AI', id}));
+  const playerPicks = [...preP, ...postP].filter(x => x.actor === 'PLAYER').map(x => x.id);
+  const aiPicks = [...preP, ...postP].filter(x => x.actor === 'AI').map(x => x.id);
+  const cardList = ids => ids.map(id => card(id, {clickable: false})).join('');
+  return `<div class="game">${header()}<main class="round-summary"><span class="kicker">ROUND COMPLETE</span><h1>第${game.round+1}轮选人完成${isDouble?'（双选）':'（单选）'}</h1><div class="duel-picks"><article><h3>你的选择</h3>${cardList(playerPicks)}</article><b>VS</b><article><h3>AI选择</h3>${cardList(aiPicks)}</article></div><div class="summary-stats"><span>你的纸面 ${currentPaper('PLAYER').toFixed(1)}</span><span>AI纸面 ${currentPaper('AI').toFixed(1)}</span><span>下一轮 ${game.round < game.rounds.length - 1 ? POSITION_NAME[game.rounds[game.round+1].category] : '阵容排布'}</span></div><button class="primary" data-next>${game.round < game.rounds.length - 1 ? '进入下一轮' : '进入阵容调整'}</button></main></div>`;
+}
+function pitch(side, direction = 'normal') {
+  // direction: 'normal' (玩家：从下往上攻) 或 'reverse' (AI：从上往下攻)
+  const assignment = game.lineup[side];
+  const slots = direction === 'reverse' ? [...SLOT_ORDER].reverse() : SLOT_ORDER;
+  const isPlayer = side === 'PLAYER';
+  return `<div class="pitch pitch-${direction}${isPlayer ? ' pitch-player' : ' pitch-ai'}"><div class="pitch-half pitch-def"></div><div class="pitch-half pitch-mid"></div><div class="pitch-half pitch-att"></div><div class="pitch-center"></div>${slots.map(slot => {
+    const p = player(assignment[slot]);
+    return `<div class="pitch-slot slot-${slot.toLowerCase()}"><div class="slot-pos">${SLOT_LABELS[slot]}</div><div class="slot-name">${esc(p.name)}</div><div class="slot-meta"><span class="slot-rating">${p.rating}</span><span class="slot-fit">适配${Math.round(roleFit(p, slot) * 100)}%</span></div></div>`;
+  }).join('')}</div>`;
+}
+function metricPanel(side) {
+  const m = lineupMetrics(game.lineup[side]);
+  return `<div class="metric-panel"><div><span>纸面实力</span><b>${m.paper.toFixed(1)}</b></div><div><span>化学反应</span><b>${m.chemistry.toFixed(1)}</b></div><div class="overall"><span>综合实力</span><b>${m.overall.toFixed(1)}</b></div><small>前锋 ${m.lines.FWD.toFixed(1)} · 中场 ${m.lines.MID.toFixed(1)} · 后卫 ${m.lines.DEF.toFixed(1)}</small></div>`;
+}
+function lineupScreen() {
+  return `<div class="game">${header()}<main class="lineup-page"><div class="section-title"><div><span class="kicker">FINAL LINEUP</span><h1>两军对垒 · 4-3-3</h1><p>双方阵容已由系统自动排出最优布局。你可以在结果页查看完整球员明细。</p></div><button class="primary" data-play>确认阵容并开始三局两胜</button></div><div class="lineup-compare"><section class="lineup-side lineup-player"><header><h2>玩家阵容</h2><span class="side-score">综合 ${lineupMetrics(game.lineup.PLAYER).overall.toFixed(1)}</span></header>${pitch('PLAYER', 'normal')}${metricPanel('PLAYER')}</section><section class="lineup-side lineup-ai"><header><h2>AI阵容</h2><span class="side-score">综合 ${lineupMetrics(game.lineup.AI).overall.toFixed(1)}</span></header>${pitch('AI', 'reverse')}${metricPanel('AI')}</section></div></main></div>`;
+}
 function resultScreen() { const r=game.result,win=r.winner==='PLAYER'; return `<div class="game result-page">${header()}<main><span class="kicker">BEST OF THREE</span><h1>${win?'你赢得了对局':'AI赢得了对局'}</h1><div class="series-score"><b>${r.pw}</b><span>:</span><b>${r.aw}</b></div><div class="matches">${r.matches.map((m,i)=>`<article><small>第${i+1}场 · ${m.venue}</small><strong>${m.pg} : ${m.ag}</strong></article>`).join('')}</div><div class="result-metrics">${metricPanel('PLAYER')}${metricPanel('AI')}</div><div class="mvp">本局MVP <strong>${esc(nameZh(player(r.mvp)))}</strong></div><div class="menu-actions"><button class="primary" data-rematch>再来一局</button><button data-lineups>查看阵容</button><button data-replay>查看BP回放</button><button data-home>返回主菜单</button></div></main></div>`; }
 function historyScreen() { const list=histories(); return `<div class="history-page"><header><h1>最近20局</h1><button data-home>返回</button></header>${list.length?list.map((r,i)=>`<article><div><b>${r.winner==='PLAYER'?'胜利':'失败'} ${r.pw}:${r.aw}</b><span>${new Date(r.date).toLocaleString()}</span></div><div>玩家 ${r.metrics.PLAYER.overall.toFixed(1)} · AI ${r.metrics.AI.overall.toFixed(1)}</div><button data-history-replay="${i}">逐步回放</button></article>`).join(''):'<p class="empty">暂无完成的对局</p>'}</div>`; }
 function replayScreen() { const record=game.replayRecord, step=game.replayStep||0, snap=record.snapshots[step]; return `<div class="replay-page"><header><h1>BP逐步回放</h1><button data-home>返回</button></header><div class="replay-progress">${step+1} / ${record.snapshots.length} · ${esc(snap.label)}</div><div class="replay-columns"><section><h2>玩家阵容</h2>${snap.picks.PLAYER.map(id=>`<p>${esc(id==='shared_courtois'?'蒂博·库尔图瓦':nameZh(record.players.find(p=>p.id===id)||{name:id}))}</p>`).join('')}</section><section><h2>当轮候选</h2>${snap.candidates.map(id=>`<span>${esc(nameZh(record.players.find(p=>p.id===id)||{name:id}))}</span>`).join('')}</section><section><h2>AI阵容</h2>${snap.picks.AI.map(id=>`<p>${esc(id==='shared_courtois'?'蒂博·库尔图瓦':nameZh(record.players.find(p=>p.id===id)||{name:id}))}</p>`).join('')}</section></div><div class="replay-controls"><button data-step="-1" ${step===0?'disabled':''}>上一步</button><button data-step="1" ${step>=record.snapshots.length-1?'disabled':''}>下一步</button></div></div>`; }
@@ -397,8 +753,22 @@ function onlineRoom(){
 }
 function render() {
   clearTimeout(aiTimer);
-  if(!game){app.innerHTML=menu();bind();return;}
-  const html=game.screen==='online-lobby'?onlineLobby():game.screen==='online-room'?onlineRoom():game.screen==='setup'?setup():game.screen==='history'?historyScreen():game.screen==='replay'?replayScreen():game.phase==='order'?orderScreen():['ban','pick'].includes(game.phase)?bpScreen():game.phase==='summary'?summaryScreen():game.phase==='lineup'?lineupScreen():game.phase==='result'?resultScreen():menu(); app.innerHTML=html; bind(); if(game.screen!=='online-room')scheduleAI();
+  if (!game) { app.innerHTML = menu(); bind(); return; }
+  let html;
+  if (game.screen === 'online-lobby') html = onlineLobby();
+  else if (game.screen === 'online-room') html = onlineRoom();
+  else if (game.screen === 'setup') html = setup();
+  else if (game.screen === 'history') html = historyScreen();
+  else if (game.screen === 'replay') html = replayScreen();
+  else if (game.phase === 'order') html = orderScreen();
+  else if (game.phase === 'ban' || game.phase === 'prePick' || game.phase === 'postPick' || game.phase === 'pick') html = bpScreen();
+  else if (game.phase === 'summary') html = summaryScreen();
+  else if (game.phase === 'lineup') html = lineupScreen();
+  else if (game.phase === 'result') html = resultScreen();
+  else html = menu();
+  app.innerHTML = html;
+  bind();
+  if (game.screen !== 'online-room') scheduleAI();
 }
 function bind() {
   document.querySelector('[data-new]')?.addEventListener('click',()=>{game={screen:'setup'};render();});
@@ -453,7 +823,7 @@ function bind() {
   document.querySelectorAll('[data-card]').forEach(el=>el.onclick=()=>{selectedId=el.dataset.card;render();});
   document.querySelector('[data-confirm]')?.addEventListener('click',confirmPlayerAction);
   document.querySelector('[data-next]')?.addEventListener('click',continueRound);
-  document.querySelectorAll('[data-slot]').forEach(el=>el.onclick=()=>{const slot=el.dataset.slot;if(!selectedId){selectedId=slot;render();}else if(selectedId===slot){selectedId=null;render();}else{swapSlots(selectedId,slot);}});
+  document.querySelectorAll('[data-slot]').forEach(el => el.onclick = () => {});
   document.querySelector('[data-play]')?.addEventListener('click',playSeries);
   document.querySelector('[data-rematch]')?.addEventListener('click',rematch);
   document.querySelector('[data-lineups]')?.addEventListener('click',()=>{game.phase='lineup';game.screen='lineup';render();});

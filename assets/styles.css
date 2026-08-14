@@ -7,3 +7,81 @@
 /* Online Wait Room Enhanced Styles */
 .online-wait{max-width:700px}.wait-header{text-align:center;margin-bottom:2rem}.room-code-display{text-align:center;padding:2rem;background:linear-gradient(135deg,#123e2d,#0a2818);border-radius:20px;margin:1.5rem 0;border:2px solid var(--green)}.room-code-label{color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem}.room-code-number{font-size:3.5rem;font-weight:900;letter-spacing:0.3em;color:var(--green)}.invite-section{margin:1.5rem 0}.invite-tip{color:var(--muted);font-size:0.9rem;margin-bottom:0.8rem}.invite-link-box{display:flex;gap:0.5rem}.invite-link-box input{flex:1;background:#091018;border:1px solid var(--line);border-radius:9px;padding:0.8rem;color:var(--text);font-size:0.85rem}.players-status{display:flex;justify-content:center;gap:2rem;margin:2rem 0}.player-status{display:flex;align-items:center;gap:0.6rem;padding:0.8rem 1.2rem;background:#172431;border-radius:12px;min-width:160px}.player-status .status-dot{width:10px;height:10px;border-radius:50%;background:var(--muted)}.player-status.you .status-dot{background:var(--green)}.player-status.connected .status-dot{background:var(--green)}.player-status.waiting .status-dot{background:var(--gold);animation:blink 1.5s infinite}.player-status .player-name{font-weight:600}.player-status .player-role{color:var(--muted);font-size:0.8rem;margin-left:auto}.wait-actions{text-align:center;margin-top:1.5rem}.opponent-joined{color:var(--green);font-weight:600;padding:1rem;background:rgba(66,224,139,0.1);border-radius:12px;animation:pulse 1s infinite}@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
 @media(max-width:1100px){.bp-layout{grid-template-columns:200px 1fr 200px}.candidate-grid{grid-template-columns:repeat(3,1fr)}.pitch-slot{width:120px}.lineup-compare{grid-template-columns:1fr}}@media(max-width:780px){.landing,.setup-page{grid-template-columns:1fr;padding:2rem}.bp-layout{display:flex;flex-direction:column}.roster{order:2}.board{order:1}.mini-slots{grid-template-columns:1fr 1fr}.candidate-grid{grid-template-columns:1fr 1fr}.choice-grid{grid-template-columns:1fr}.duel-picks{grid-template-columns:1fr}.lineup-compare{grid-template-columns:1fr}.history-page article{grid-template-columns:1fr}.replay-columns{grid-template-columns:1fr}.online-lobby{grid-template-columns:1fr}.players-status{flex-direction:column;align-items:center}}
+
+/* Enhanced Player Panel */
+.mini-player{display:flex;flex-direction:column;gap:.25rem;padding:.55rem .7rem;border-radius:8px;background:#172431;border-left:3px solid var(--blue);font-size:.74rem}
+.ai .mini-player{border-left-color:var(--red)}
+.mini-player.fixed{border-color:var(--gold)}
+.mini-player.empty{color:#52605b;border-left-color:#28352f;font-style:italic}
+.mini-player .mini-row{display:flex;align-items:center;justify-content:space-between;gap:.4rem}
+.mini-player .mini-row b{font-weight:700;color:var(--gold);font-size:.68rem;letter-spacing:.05em}
+.mini-player .mini-row span{flex:1;font-weight:600;color:var(--text);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-player .mini-row .mini-rating{color:var(--green);font-weight:800;font-size:.78rem}
+.mini-player.fixed .mini-row .mini-rating{color:var(--gold)}
+.mini-player .mini-meta{font-size:.66rem;color:var(--muted);display:flex;gap:.3rem}
+
+/* Enhanced Ban Panel */
+.ban-panel{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin:.7rem 0}
+.ban-row{background:#091018;padding:.7rem;border-radius:9px;min-height:48px;display:flex;flex-direction:column;gap:.4rem}
+.ban-row>b{font-size:.72rem;color:var(--muted);font-weight:700;letter-spacing:.06em}
+.ban-row .ban-item{display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-top:1px dashed #1a2535}
+.ban-row .ban-item:first-of-type{border-top:none}
+.ban-row .ban-idx{color:#ff5d70;font-weight:800;font-size:.7rem;width:1rem}
+.ban-row .ban-info{flex:1;min-width:0}
+.ban-row .ban-info b{display:block;font-size:.76rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ban-row .ban-info small{font-size:.66rem;color:var(--muted)}
+.ban-row .ban-rating{color:var(--gold);font-weight:800;font-size:.78rem}
+.ban-row .ban-empty{color:#52605b;font-size:.72rem;font-style:italic}
+
+/* Lineup side-by-side pitches */
+.lineup-compare{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:1.5rem}
+.lineup-side{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:1rem;display:flex;flex-direction:column;gap:1rem}
+.lineup-side header{display:flex;justify-content:space-between;align-items:center;padding-bottom:.5rem;border-bottom:1px solid var(--line)}
+.lineup-side header h2{margin:0;font-size:1.2rem}
+.lineup-side.lineup-player header h2{color:var(--blue)}
+.lineup-side.lineup-ai header h2{color:var(--red)}
+.lineup-side .side-score{font-weight:800;color:var(--gold);font-size:1.1rem;padding:.25rem .7rem;background:#091018;border-radius:8px;border:1px solid var(--line)}
+
+/* Pitch (阵容视图) */
+.pitch{position:relative;height:620px;background:linear-gradient(180deg,#0d432d 0%,#0a3423 50%,#082b1c 100%);border:3px solid #ffffff15;border-radius:18px;overflow:hidden}
+.pitch-reverse{transform:none}
+.pitch-half{position:absolute;left:5%;right:5%;border:2px solid #ffffff12}
+.pitch-def{top:5%;height:30%}
+.pitch-mid{top:35%;height:30%;border-top:none}
+.pitch-att{top:65%;height:30%;border-top:none}
+.pitch-center{position:absolute;top:48%;left:50%;width:80px;height:80px;border:2px solid #ffffff18;border-radius:50%;transform:translate(-50%,-50%)}
+.pitch-slot{position:absolute;width:130px;padding:.5rem .65rem;transform:translate(-50%,-50%);background:linear-gradient(145deg,#16243aee,#0d141cee);border:1px solid #ffffff20;border-radius:10px;text-align:center;color:var(--text)}
+.pitch-slot .slot-pos{font-size:.6rem;color:var(--muted);letter-spacing:.06em;font-weight:600}
+.pitch-slot .slot-name{font-size:.78rem;font-weight:700;margin:.2rem 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pitch-slot .slot-meta{display:flex;justify-content:space-between;align-items:center;font-size:.66rem}
+.pitch-slot .slot-rating{color:var(--gold);font-weight:800}
+.pitch-slot .slot-fit{color:var(--green)}
+
+/* 4-3-3 阵型坐标（玩家进攻方向：自下而上） */
+.slot-lw{left:22%;top:30%}
+.slot-st{left:50%;top:24%}
+.slot-rw{left:78%;top:30%}
+.slot-cm1{left:25%;top:53%}
+.slot-cdm{left:50%;top:58%}
+.slot-cm2{left:75%;top:53%}
+.slot-lb{left:14%;top:78%}
+.slot-cb1{left:38%;top:84%}
+.slot-cb2{left:62%;top:84%}
+.slot-rb{left:86%;top:78%}
+.slot-gk{left:50%;top:93%}
+
+/* AI 阵容反向：自上而下攻 */
+.pitch-reverse .slot-lw{left:22%;top:70%}
+.pitch-reverse .slot-st{left:50%;top:76%}
+.pitch-reverse .slot-rw{left:78%;top:70%}
+.pitch-reverse .slot-cm1{left:25%;top:47%}
+.pitch-reverse .slot-cdm{left:50%;top:42%}
+.pitch-reverse .slot-cm2{left:75%;top:47%}
+.pitch-reverse .slot-lb{left:14%;top:22%}
+.pitch-reverse .slot-cb1{left:38%;top:16%}
+.pitch-reverse .slot-cb2{left:62%;top:16%}
+.pitch-reverse .slot-rb{left:86%;top:22%}
+.pitch-reverse .slot-gk{left:50%;top:7%}
+
+@media(max-width:1100px){.lineup-compare{grid-template-columns:1fr}.pitch{height:560px}.pitch-slot{width:110px}}
+

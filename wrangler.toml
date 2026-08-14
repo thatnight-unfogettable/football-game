@@ -1,0 +1,17 @@
+name = "football-bp-arena"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+node_compat = false
+
+[site]
+bucket = "../"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "RoomDO"
+
+[vars]
+ALLOWED_ORIGINS = "*"
+
+# 开发环境配置
+# 部署前请根据需要修改
