@@ -158,10 +158,6 @@ function beginRound(order) {
     game.firstBan = order === 'PLAYER' ? 'AI' : 'PLAYER';
     game.firstPicker = order;
   }
-  // #region agent log
-  console.log('[DEBUG H3 beginRound]', JSON.stringify({round:game.round,type:roundInfo.type,order,firstBan:game.firstBan,firstPicker:game.firstPicker,subPhase:game.subPhase}));
-  fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:160',message:'beginRound',data:{round:game.round,type:roundInfo.type,order,firstBan:game.firstBan,firstPicker:game.firstPicker,subPhase:game.subPhase},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
   selectedId = null;
   game.log.push({ type: 'round', round: game.round + 1, info: roundInfo, candidates: [...game.candidates], firstBan: order, mode: roundInfo.type });
   snapshot(`第${game.round+1}轮候选揭晓（${roundInfo.type==='double'?'16人双选':'12人单选'}）`);
@@ -190,12 +186,8 @@ function currentActor() {
   if (game.subPhase === 'pick') {
     // single 轮的 pick 阶段：双方轮流各选 1 人
     const postTaken = (game.postPicks || []).length;
-    const actor = postTaken === 0 ? (game.firstPicker || 'PLAYER') : (game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER');
-    // #region agent log
-    console.log('[DEBUG H2 actor]', JSON.stringify({round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:postTaken,actor}));
-    fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:190',message:'currentActor pick',data:{round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:postTaken,actor},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
-    return actor;
+    if (postTaken === 0) return game.firstPicker || 'PLAYER';
+    return game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER';
   }
   return null;
 }
@@ -285,10 +277,6 @@ function applyBan(actor, id, reason) {
 function applyPick(actor, id, reason) {
   // single轮的pick阶段（保兼容）
   if (!available().includes(id) || game.subPhase !== 'pick') return;
-  // #region agent log
-  console.log('[DEBUG H5 applyPick IN]', JSON.stringify({round:game.round,subPhase:game.subPhase,actor,id,postPicksLen:(game.postPicks||[]).length}));
-  fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:278',message:'applyPick ENTER',data:{round:game.round,subPhase:game.subPhase,actor,id,postPicksLen:(game.postPicks||[]).length},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-  // #endregion
   if (!game.postPicks) game.postPicks = [];
   game.postPicks.push(id);
   game.picks[actor].push(id);
@@ -296,10 +284,6 @@ function applyPick(actor, id, reason) {
   selectedId = null;
   beep('select');
   snapshot(`${actor==='PLAYER'?'玩家':'AI'}选择${nameZh(player(id))}`);
-  // #region agent log
-  console.log('[DEBUG H5 applyPick POST]', JSON.stringify({round:game.round,subPhase:game.subPhase,actor,newPostPicksLen:game.postPicks.length}));
-  fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:286',message:'applyPick AFTER PUSH',data:{round:game.round,subPhase:game.subPhase,actor,newPostPicksLen:game.postPicks.length},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-  // #endregion
   if (game.postPicks.length >= 2) {
     game.subPhase = 'summary';
     game.phase = 'summary';
@@ -366,10 +350,6 @@ function continueRound() {
   game.roundBans = [];
   game.banTurn = 0;
   game.selected = null;
-  // #region agent log
-  console.log('[DEBUG H3 continueRound]', JSON.stringify({round:game.round,roundsLen:game.rounds?game.rounds.length:0,firstPickerBefore:game.firstPicker,firstBanBefore:game.firstBan}));
-  fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:354',message:'continueRound ENTER',data:{round:game.round,roundsLen:game.rounds?game.rounds.length:0,firstPickerBefore:game.firstPicker,firstBanBefore:game.firstBan},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
   if (game.round >= game.rounds.length - 1) { finalizeLineups(); return; }
   game.round++;
   game.phase = 'order';
@@ -384,10 +364,31 @@ function roleFit(p, slot) {
   return near.includes(pos) ? .96 : .92;
 }
 function bestAssignment(ids) {
-  const cards=ids.map(player); const slots=SLOT_ORDER.filter(s=>s!=='GK'); const byLine={FWD:slots.slice(0,3),MID:slots.slice(3,6),DEF:slots.slice(6,10)}; const result={GK:COURTOIS.id};
-  for(const [line,lineSlots] of Object.entries(byLine)) {
-    const pool=cards.filter(p=>p.position===line); const remaining=[...pool];
-    for(const slot of lineSlots) { let best=remaining.map((p,i)=>({i,v:p.rating*roleFit(p,slot)})).sort((a,b)=>b.v-a.v)[0]; const [picked]=remaining.splice(best.i,1); result[slot]=picked.id; }
+  const cards = ids.map(player);
+  const slots = SLOT_ORDER.filter(s => s !== 'GK');
+  const byLine = { FWD: slots.slice(0, 3), MID: slots.slice(3, 6), DEF: slots.slice(6, 10) };
+  const result = { GK: COURTOIS.id };
+  const used = new Set();
+  for (const [line, lineSlots] of Object.entries(byLine)) {
+    const pool = cards.filter(p => p.position === line && !used.has(p.id));
+    const remaining = [...pool];
+    for (const slot of lineSlots) {
+      if (remaining.length === 0) break;
+      let best = remaining.map((p, i) => ({ i, v: p.rating * roleFit(p, slot) })).sort((a, b) => b.v - a.v)[0];
+      const [picked] = remaining.splice(best.i, 1);
+      result[slot] = picked.id;
+      used.add(picked.id);
+    }
+  }
+  // 兜底：如果还有未分配的 slot，从所有剩余 picks 里按 rating 填满
+  const allRemaining = cards.filter(p => !used.has(p.id));
+  for (const slot of slots) {
+    if (result[slot]) continue;
+    if (allRemaining.length === 0) break;
+    let best = allRemaining.map((p, i) => ({ i, v: p.rating * roleFit(p, slot) })).sort((a, b) => b.v - a.v)[0];
+    const [picked] = allRemaining.splice(best.i, 1);
+    result[slot] = picked.id;
+    used.add(picked.id);
   }
   return result;
 }
@@ -590,11 +591,7 @@ function bpScreen() {
   } else if (sub === 'pick') {
     const taken = (game.postPicks || []).length;
     title = '选择阶段';
-    desc = `请从${available().length}人中选择（第${taken+1}/1人）`;
-    // #region agent log
-    console.log('[DEBUG H1 caption]', JSON.stringify({round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:(game.postPicks||[]).length,availableLen:available().length,captionDesc:desc}));
-    fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:574',message:'bpScreen pick caption',data:{round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:(game.postPicks||[]).length,availableLen:available().length,captionDesc:desc},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
+    desc = `请从${available().length}人中选择（第${taken+1}/2人）`;
   }
   const actionText = (sub === 'prePick' || sub === 'postPick' || sub === 'pick') ? '选择' : '禁用';
   return `<div class="game">${header()}<div class="bp-layout">${roster('PLAYER')}<main class="board"><div class="turn-banner ${actor?.toLowerCase()}"><b>${actor==='PLAYER'?'你的回合':'AI思考中'}</b><span>${title} · ${desc}</span></div>${bansPanel()}<div class="candidate-grid">${game.candidates.map(id => card(id, {disabled: removed.has(id), selected: selectedId === id, clickable: actor === 'PLAYER'})).join('')}</div><footer><span>${selectedId ? `已选中：${esc(player(selectedId).name)}` : '先查看卡牌信息，再确认操作'}</span><button class="primary" data-confirm ${!selectedId || actor !== 'PLAYER' ? 'disabled' : ''}>确认${actionText}</button></footer></main>${roster('AI')}</div></div>`;
@@ -820,8 +817,24 @@ function render() {
     const aiFull = (game.picks.AI?.length || 0) >= 11;
     if ((playerFull && aiFull) && !['lineup','result'].includes(game.phase)) {
       console.warn('[render] both lineups full but phase is', game.phase, '-> auto-finalize');
-      try { finalizeLineups(); } catch (e) { console.error(e); }
-      return;
+      try {
+        finalizeLineups();
+      } catch (e) {
+        console.error('[render] finalizeLineups failed:', e);
+        // bestAssignment 抛错时仍强制推进到 lineup 阶段，避免 UI 卡住
+        game.phase = 'lineup';
+        game.screen = 'lineup';
+        game.lineup.PLAYER = game.lineup.PLAYER || { GK: COURTOIS.id };
+        game.lineup.AI = game.lineup.AI || { GK: COURTOIS.id };
+        if (!game.lineup.PLAYER.GK) game.lineup.PLAYER.GK = COURTOIS.id;
+        if (!game.lineup.AI.GK) game.lineup.AI.GK = COURTOIS.id;
+        for (const slot of SLOT_ORDER) {
+          if (!game.lineup.PLAYER[slot]) game.lineup.PLAYER[slot] = game.picks.PLAYER[0] || COURTOIS.id;
+          if (!game.lineup.AI[slot]) game.lineup.AI[slot] = game.picks.AI[0] || COURTOIS.id;
+        }
+        save();
+      }
+      // 不 return，继续渲染 lineupScreen
     }
   }
   let html;
@@ -923,4 +936,5 @@ function bind() {
   document.querySelectorAll('[data-home]').forEach(el=>el.onclick=()=>reset());
 }
 if(new URLSearchParams(location.search).get('room')) game={screen:'online-lobby'};
+if (typeof window !== 'undefined') window.__game = () => game;
 render();

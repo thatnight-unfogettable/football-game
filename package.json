@@ -27,6 +27,7 @@
   ],
   "description": "绿茵禁选对决 - 足球BP对战游戏，支持好友在线对战",
   "devDependencies": {
+    "jsdom": "^30.0.1",
     "pptxgenjs": "^4.0.1"
   }
 }
