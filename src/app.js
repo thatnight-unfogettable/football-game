@@ -159,6 +159,7 @@ function beginRound(order) {
     game.firstPicker = order;
   }
   // #region agent log
+  console.log('[DEBUG H3 beginRound]', JSON.stringify({round:game.round,type:roundInfo.type,order,firstBan:game.firstBan,firstPicker:game.firstPicker,subPhase:game.subPhase}));
   fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:160',message:'beginRound',data:{round:game.round,type:roundInfo.type,order,firstBan:game.firstBan,firstPicker:game.firstPicker,subPhase:game.subPhase},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
   // #endregion
   selectedId = null;
@@ -191,6 +192,7 @@ function currentActor() {
     const postTaken = (game.postPicks || []).length;
     const actor = postTaken === 0 ? (game.firstPicker || 'PLAYER') : (game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER');
     // #region agent log
+    console.log('[DEBUG H2 actor]', JSON.stringify({round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:postTaken,actor}));
     fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:190',message:'currentActor pick',data:{round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:postTaken,actor},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
     // #endregion
     return actor;
@@ -284,6 +286,7 @@ function applyPick(actor, id, reason) {
   // single轮的pick阶段（保兼容）
   if (!available().includes(id) || game.subPhase !== 'pick') return;
   // #region agent log
+  console.log('[DEBUG H5 applyPick IN]', JSON.stringify({round:game.round,subPhase:game.subPhase,actor,id,postPicksLen:(game.postPicks||[]).length}));
   fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:278',message:'applyPick ENTER',data:{round:game.round,subPhase:game.subPhase,actor,id,postPicksLen:(game.postPicks||[]).length},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   if (!game.postPicks) game.postPicks = [];
@@ -294,6 +297,7 @@ function applyPick(actor, id, reason) {
   beep('select');
   snapshot(`${actor==='PLAYER'?'玩家':'AI'}选择${nameZh(player(id))}`);
   // #region agent log
+  console.log('[DEBUG H5 applyPick POST]', JSON.stringify({round:game.round,subPhase:game.subPhase,actor,newPostPicksLen:game.postPicks.length}));
   fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:286',message:'applyPick AFTER PUSH',data:{round:game.round,subPhase:game.subPhase,actor,newPostPicksLen:game.postPicks.length},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   if (game.postPicks.length >= 2) {
@@ -363,6 +367,7 @@ function continueRound() {
   game.banTurn = 0;
   game.selected = null;
   // #region agent log
+  console.log('[DEBUG H3 continueRound]', JSON.stringify({round:game.round,roundsLen:game.rounds?game.rounds.length:0,firstPickerBefore:game.firstPicker,firstBanBefore:game.firstBan}));
   fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:354',message:'continueRound ENTER',data:{round:game.round,roundsLen:game.rounds?game.rounds.length:0,firstPickerBefore:game.firstPicker,firstBanBefore:game.firstBan},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
   // #endregion
   if (game.round >= game.rounds.length - 1) { finalizeLineups(); return; }
@@ -587,6 +592,7 @@ function bpScreen() {
     title = '选择阶段';
     desc = `请从${available().length}人中选择（第${taken+1}/1人）`;
     // #region agent log
+    console.log('[DEBUG H1 caption]', JSON.stringify({round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:(game.postPicks||[]).length,availableLen:available().length,captionDesc:desc}));
     fetch('http://127.0.0.1:7312/ingest/ee7170c6-3929-4a5d-a443-b47a6cbe8dc3',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d94869'},body:JSON.stringify({sessionId:'d94869',location:'app.js:574',message:'bpScreen pick caption',data:{round:game.round,subPhase:game.subPhase,firstPicker:game.firstPicker,postPicksLen:(game.postPicks||[]).length,availableLen:available().length,captionDesc:desc},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
     // #endregion
   }
