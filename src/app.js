@@ -372,10 +372,8 @@ function triggerChemistryAnimation(combo) {
   // 触发重排后展示
   requestAnimationFrame(() => {
     overlay.classList.add('visible');
-    // 3s 后自动关闭
-    const autoClose = setTimeout(close, 3000);
+    // 仅玩家主动点击继续 / 点击背景时才关闭
     function close() {
-      clearTimeout(autoClose);
       overlay.classList.remove('visible');
       overlay.classList.add('closing');
       setTimeout(() => overlay.remove(), 400);
