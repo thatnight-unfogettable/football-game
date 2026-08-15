@@ -218,6 +218,7 @@ function applyPrePick(actor, id, reason) {
     game.log.push({ type: 'prePick', round: game.round + 1, actor, id, reason });
     beep('select');
     snapshot(`${actor==='PLAYER'?'玩家':'AI'}初始选择${nameZh(player(id))}`);
+    if (actor === 'PLAYER') maybePlayChemistry(id);
     if (game.prePicks.length >= 2) {
       // 切换到ban阶段
       game.subPhase = 'ban';
@@ -237,6 +238,7 @@ function applyPrePick(actor, id, reason) {
     game.log.push({ type: 'postPick', round: game.round + 1, actor, id, reason });
     beep('select');
     snapshot(`${actor==='PLAYER'?'玩家':'AI'}再选${nameZh(player(id))}`);
+    if (actor === 'PLAYER') maybePlayChemistry(id);
     if (game.postPicks.length >= 2) {
       game.subPhase = 'summary';
       game.phase = 'summary';
@@ -284,6 +286,7 @@ function applyPick(actor, id, reason) {
   selectedId = null;
   beep('select');
   snapshot(`${actor==='PLAYER'?'玩家':'AI'}选择${nameZh(player(id))}`);
+  if (actor === 'PLAYER') maybePlayChemistry(id);
   if (game.postPicks.length >= 2) {
     game.subPhase = 'summary';
     game.phase = 'summary';
@@ -291,6 +294,110 @@ function applyPick(actor, id, reason) {
   } else {
     save(); render(); scheduleAI();
   }
+}
+
+// 取新球员与现有阵容中配合度最高的组合（化学加成 > 4 才返回）
+function findChemistryCombo(newPlayerId, existingIds) {
+  const candidate = player(newPlayerId);
+  if (!candidate) return null;
+  // 同俱乐部/联赛/国家加成权重（与 candidateThreat 对齐：club=5, league=2, country=3）
+  const linkScore = (a, b) =>
+    (a.club === b.club ? 5 : 0) +
+    (a.league === b.league && a.club !== b.club ? 2 : 0) +
+    (a.country === b.country && a.club !== b.club ? 3 : 0);
+  // 现有阵容中与新球员化学加成 > 4 的球员
+  const links = [];
+  for (const id of existingIds) {
+    if (id === COURTOIS.id) continue;
+    const p = player(id);
+    if (!p) continue;
+    const score = linkScore(candidate, p);
+    if (score > 4) links.push({ id, p, score });
+  }
+  if (links.length === 0) return null;
+  // 排序后取分数最高的组合（含新球员）
+  links.sort((a, b) => b.score - a.score);
+  const total = links.reduce((s, x) => s + x.score, 0);
+  return { newPlayerId, partner: links, total, best: links[0] };
+}
+
+// 触发化学反应动画：把球员卡飞入中心展示
+function triggerChemistryAnimation(combo) {
+  if (!combo) return;
+  const { newPlayerId, partner, total, best } = combo;
+  const newP = player(newPlayerId);
+  if (!newP) return;
+  // 隐藏已存在的 overlay
+  document.querySelector('.chemistry-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'chemistry-overlay';
+  // 关联球员卡（按分数从高到低排序，新球员居中）
+  const sorted = [newP, ...partner.map(x => x.p)];
+  const overlayHTML = `
+    <div class="chemistry-backdrop"></div>
+    <div class="chemistry-stage">
+      <div class="chemistry-banner">
+        <span class="chemistry-kicker">化学反应组合</span>
+        <h2>${esc(newP.name)} × ${partner.length} 名队友</h2>
+        <p>同俱乐部/联赛/国家加成 · 总计 <b>+${total}</b> · 最高 <b>+${best.score}</b></p>
+      </div>
+      <div class="chemistry-cards">
+        ${sorted.map((p, i) => {
+          const isNew = p.id === newPlayerId;
+          const link = partner.find(x => x.p.id === p.id);
+          const tag = isNew ? '<span class="ch-tag ch-tag-new">新球员</span>' :
+            (link ? `<span class="ch-tag">+${link.score}</span>` : '');
+          const reason = link
+            ? (best.p.id === p.id ? '默契搭档' :
+              (p.club === newP.club ? '同俱乐部' :
+                (p.league === newP.league ? '同联赛' : '同国家队')))
+            : '新球员';
+          return `<div class="chemistry-card ${isNew ? 'is-new' : ''}">
+            <span class="card-grade">${p.grade}</span>
+            <b class="card-rating">${p.rating}</b>
+            <span class="avatar">${esc((p.name||p.englishName).slice(0,1))}</span>
+            <strong>${esc(p.name)}</strong>
+            <small>${esc(p.englishName||'')}</small>
+            <div class="ch-meta">${esc(p.club)} · ${esc(p.country)}</div>
+            <div class="ch-meta">${reason}</div>
+            ${tag}
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="primary chemistry-close">点击继续</button>
+    </div>
+  `;
+  overlay.innerHTML = overlayHTML;
+  document.body.appendChild(overlay);
+  // 触发重排后展示
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+    // 3s 后自动关闭
+    const autoClose = setTimeout(close, 3000);
+    function close() {
+      clearTimeout(autoClose);
+      overlay.classList.remove('visible');
+      overlay.classList.add('closing');
+      setTimeout(() => overlay.remove(), 400);
+    }
+    overlay.querySelector('.chemistry-close')?.addEventListener('click', close);
+    overlay.querySelector('.chemistry-backdrop')?.addEventListener('click', close);
+  });
+}
+
+// 玩家选人后检查化学反应组合，存在则触发动画
+function maybePlayChemistry(newPlayerId) {
+  if (!game || !game.picks || !game.picks.PLAYER) return;
+  // 玩家当前阵容（排除刚选的新球员和库尔图瓦）
+  const existing = game.picks.PLAYER.filter(id => id !== newPlayerId && id !== COURTOIS.id);
+  if (existing.length === 0) return;
+  const combo = findChemistryCombo(newPlayerId, existing);
+  if (!combo) return;
+  // 等待新选球员的卡片进入阵型图后展示（与 render 同帧）
+  requestAnimationFrame(() => {
+    // 延迟到过渡完成
+    setTimeout(() => triggerChemistryAnimation(combo), 80);
+  });
 }
 function candidateThreat(id, actor, action) {
   const p = player(id); const own = game.picks[actor].map(player); const enemy = game.picks[actor==='AI'?'PLAYER':'AI'].map(player);
@@ -438,6 +545,37 @@ function lineupMetrics(assignment) {
   };
 }
 function finalizeLineups() { game.lineup.PLAYER = bestAssignment(game.picks.PLAYER); game.lineup.AI = bestAssignment(game.picks.AI); game.phase = 'lineup'; game.screen = 'lineup'; snapshot('阵容自动排布'); save(); render(); }
+function assignToSlots(picks) {
+  // BP 阶段：根据已选球员动态分配至 4-3-3 阵型 slot
+  // picks 中始终包含 COURTOIS，GK 固定给库尔图瓦
+  const cards = picks.map(player);
+  const result = { GK: COURTOIS.id };
+  const used = new Set([COURTOIS.id]);
+  const slots = SLOT_ORDER.filter(s => s !== 'GK');
+  const byLine = { FWD: slots.slice(0, 3), MID: slots.slice(3, 6), DEF: slots.slice(6, 10) };
+  for (const [line, lineSlots] of Object.entries(byLine)) {
+    const pool = cards.filter(p => p.position === line && !used.has(p.id));
+    const remaining = [...pool];
+    for (const slot of lineSlots) {
+      if (remaining.length === 0) break;
+      let best = remaining.map((p, i) => ({ i, v: p.rating * roleFit(p, slot) })).sort((a, b) => b.v - a.v)[0];
+      const [picked] = remaining.splice(best.i, 1);
+      result[slot] = picked.id;
+      used.add(picked.id);
+    }
+  }
+  // 兜底：剩余 slot 用 rating 最高的剩余球员填充
+  const allRemaining = cards.filter(p => !used.has(p.id));
+  for (const slot of slots) {
+    if (result[slot]) continue;
+    if (allRemaining.length === 0) break;
+    let best = allRemaining.map((p, i) => ({ i, v: p.rating * roleFit(p, slot) })).sort((a, b) => b.v - a.v)[0];
+    const [picked] = allRemaining.splice(best.i, 1);
+    result[slot] = picked.id;
+    used.add(picked.id);
+  }
+  return result;
+}
 function normalRandom() { const u=1-rng(),v=1-rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
 function poisson(lambda) { const l=Math.exp(-lambda);let p=1,k=0;do{k++;p*=rng();}while(p>l&&k<10);return k-1; }
 function playSeries() {
@@ -461,13 +599,17 @@ function card(id, {disabled=false, selected=false, clickable=true} = {}) {
 }
 function roster(side) {
   const picks = game.picks[side];
-  const roundsTotal = game.rounds.length;
   const total = 10;
   const remaining = Math.max(0, total - (picks.length - 1));
-  return `<aside class="roster ${side.toLowerCase()}"><h3>${side==='PLAYER'?'你的阵容':'AI阵容'}</h3><div class="roster-score">当前纸面 ${currentPaper(side).toFixed(1)}</div><div class="mini-slots"><div class="mini-player fixed"><div class="mini-row"><b>GK</b><span>${esc(COURTOIS.name)}</span><span class="mini-rating">90</span></div><div class="mini-meta">${esc(COURTOIS.club)} · ${esc(COURTOIS.country)}</div></div>${picks.filter(id=>id!==COURTOIS.id).map(id=>{
-    const p = player(id);
-    return `<div class="mini-player"><div class="mini-row"><b>${esc(p.detailedPosition||p.position)}</b><span>${esc(p.name)}</span><span class="mini-rating">${p.rating}</span></div><div class="mini-meta">${esc(p.club)} · ${esc(p.country)}</div></div>`;
-  }).join('')}${Array(remaining).fill('<div class="mini-player empty">待选择</div>').join('')}</div></aside>`;
+  const assignment = assignToSlots(picks);
+  const slots = side === 'AI' ? [...SLOT_ORDER].reverse() : SLOT_ORDER;
+  const dirClass = side === 'AI' ? 'pitch-reverse' : '';
+  return `<aside class="roster ${side.toLowerCase()}"><h3>${side==='PLAYER'?'你的阵容':'AI阵容'}</h3><div class="roster-score">当前纸面 ${currentPaper(side).toFixed(1)}</div><div class="pitch side-pitch ${dirClass}"><div class="pitch-half pitch-def"></div><div class="pitch-half pitch-mid"></div><div class="pitch-half pitch-att"></div><div class="pitch-center"></div>${slots.map(slot => {
+    const pid = assignment[slot];
+    if (!pid) return `<div class="pitch-slot slot-${slot.toLowerCase()} slot-empty"><div class="slot-pos">${SLOT_LABELS[slot]}</div><div class="slot-name">空位</div></div>`;
+    const p = player(pid);
+    return `<div class="pitch-slot slot-${slot.toLowerCase()}"><div class="slot-pos">${SLOT_LABELS[slot]}</div><div class="slot-name">${esc(p.name)}</div><div class="slot-meta"><span class="slot-rating">${p.rating}</span><span class="slot-fit">适配${Math.round(roleFit(p, slot) * 100)}%</span></div></div>`;
+  }).join('')}</div><div class="roster-foot">${remaining > 0 ? `还差 <b>${remaining}</b> 名球员` : '阵容已满'}</div></aside>`;
 }
 function currentPaper(side) {
   const cards = game.picks[side].map(player);
@@ -936,5 +1078,54 @@ function bind() {
   document.querySelectorAll('[data-home]').forEach(el=>el.onclick=()=>reset());
 }
 if(new URLSearchParams(location.search).get('room')) game={screen:'online-lobby'};
-if (typeof window !== 'undefined') window.__game = () => game;
+if (typeof window !== 'undefined') {
+  window.__game = () => game;
+  window.__triggerChemistryAnimation = (combo) => {
+  const oldGame = game, oldPlayer = player;
+  game = window._game;
+  player = window.__test._player;
+  try { return triggerChemistryAnimation(combo); } finally { game = oldGame; player = oldPlayer; }
+};
+  // 测试接口：允许从外部设置 game 数据并调用内部函数
+  window.__test = {
+    bindPlayers(players) {
+      const _player = (id) => id === 'shared_courtois' ? { id: 'shared_courtois', name: '蒂博·库尔图瓦', position: 'GK', detailedPosition: 'GK', rating: 90, grade: 'S', club: '固定门将', league: '特殊卡', country: '比利时' } : players.find(p => p.id === id);
+      window.__test._player = _player;
+    },
+    setGame(g) {
+      window._game = g;
+      window.__game = () => g;
+    },
+    assignToSlots(ids) {
+      const oldGame = game, oldPlayer = player;
+      game = window._game;
+      player = window.__test._player;
+      try { return assignToSlots(ids); } finally { game = oldGame; player = oldPlayer; }
+    },
+    bestAssignment(ids) {
+      const oldGame = game, oldPlayer = player;
+      game = window._game;
+      player = window.__test._player;
+      try { return bestAssignment(ids); } finally { game = oldGame; player = oldPlayer; }
+    },
+    lineupMetrics(a) {
+      const oldGame = game, oldPlayer = player;
+      game = window._game;
+      player = window.__test._player;
+      try { return lineupMetrics(a); } finally { game = oldGame; player = oldPlayer; }
+    },
+    roster(side) {
+      const oldGame = game, oldPlayer = player;
+      game = window._game;
+      player = window.__test._player;
+      try { return roster(side); } finally { game = oldGame; player = oldPlayer; }
+    }
+  };
+  window.__findChemistryCombo = (id, list) => {
+    const oldGame = game, oldPlayer = player;
+    game = window._game;
+    player = window.__test._player;
+    try { return findChemistryCombo(id, list); } finally { game = oldGame; player = oldPlayer; }
+  };
+}
 render();

@@ -85,3 +85,65 @@
 
 @media(max-width:1100px){.lineup-compare{grid-template-columns:1fr}.pitch{height:560px}.pitch-slot{width:110px}}
 
+/* ===== BP 阶段阵型图（替换左右两侧 roster） ===== */
+.roster{display:flex;flex-direction:column;gap:.6rem}
+.roster h3{margin:0;font-size:1rem}
+.roster-score{color:var(--muted);margin-bottom:.2rem;font-size:.85rem}
+.roster-foot{text-align:center;font-size:.78rem;color:var(--muted);padding:.4rem 0;border-top:1px solid var(--line)}
+.roster-foot b{color:var(--gold);font-weight:800}
+.roster .pitch.side-pitch{position:relative;height:520px;flex:1;border-radius:14px}
+.roster .pitch.side-pitch .pitch-slot{width:96px;padding:.35rem .45rem;font-size:.7rem}
+.roster .pitch.side-pitch .slot-name{font-size:.7rem}
+.roster .pitch.side-pitch .slot-meta{font-size:.58rem;gap:.2rem}
+.roster .pitch.side-pitch .slot-pos{font-size:.55rem}
+.roster .pitch.side-pitch .slot-empty{opacity:.45;background:#0a141dee;border:1px dashed #29394a;color:#52605b}
+.roster .pitch.side-pitch .slot-empty .slot-name,.roster .pitch.side-pitch .slot-empty .slot-pos{color:#52605b}
+.pitch-slot{transition:transform .35s ease,box-shadow .35s ease,opacity .35s ease}
+.pitch-slot.just-picked{box-shadow:0 0 0 2px var(--gold),0 0 28px #f6c65b88;transform:translate(-50%,-50%) scale(1.08);z-index:2}
+
+/* 紧凑阵型图（侧边栏） */
+.pitch.side-pitch{background:linear-gradient(180deg,#0d432d 0%,#0a3423 50%,#082b1c 100%)}
+.pitch.side-pitch .pitch-half,.pitch.side-pitch .pitch-center{opacity:.5}
+
+/* ===== 化学反应动画 ===== */
+.chemistry-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s ease;pointer-events:none}
+.chemistry-overlay.visible{opacity:1;pointer-events:auto}
+.chemistry-overlay.closing{opacity:0}
+.chemistry-backdrop{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,#0a342399 0%,#06080aee 80%);backdrop-filter:blur(14px);cursor:pointer}
+.chemistry-stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:1.2rem;padding:2rem 1.5rem;max-width:90vw;text-align:center}
+.chemistry-banner{color:var(--text)}
+.chemistry-kicker{letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-size:.78rem;font-weight:800}
+.chemistry-banner h2{font-size:clamp(1.4rem,2.5vw,2.2rem);margin:.4rem 0;color:#fff;text-shadow:0 0 16px #f6c65b66}
+.chemistry-banner p{color:var(--muted);margin:0}
+.chemistry-banner p b{color:var(--green);font-size:1.2rem;font-weight:800}
+.chemistry-cards{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;margin-top:1rem}
+.chemistry-card{position:relative;display:flex;flex-direction:column;text-align:left;min-width:160px;min-height:180px;padding:.85rem;background:linear-gradient(145deg,#192736,#0d141c);border:1px solid var(--line);border-radius:14px;transition:transform .35s ease,box-shadow .35s ease,opacity .35s ease}
+.chemistry-card.is-new{border-color:var(--gold);box-shadow:0 0 0 2px #f6c65b55,0 18px 40px #f6c65b66;transform:scale(1.05)}
+.chemistry-card .card-grade{color:var(--gold);font-size:.7rem;font-weight:800}
+.chemistry-card .card-rating{position:absolute;right:.65rem;top:.65rem;font-size:1.5rem;color:#ffffff28;font-weight:900}
+.chemistry-card .avatar{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:#ffffff10;margin:.25rem 0;font-weight:800;color:var(--green)}
+.chemistry-card strong{font-weight:800;font-size:.95rem;padding-right:2rem}
+.chemistry-card small{font-size:.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chemistry-card .ch-meta{font-size:.7rem;color:var(--muted);margin-top:.25rem}
+.chemistry-card .ch-tag{position:absolute;top:-10px;right:-8px;background:var(--green);color:#04130c;font-weight:800;font-size:.7rem;padding:.2rem .5rem;border-radius:999px}
+.chemistry-card .ch-tag-new{background:var(--gold);color:#3a2700}
+.chemistry-close{padding:.8rem 1.6rem;font-size:1rem;background:var(--green);color:#04130c;border:none;border-radius:12px;font-weight:800;cursor:pointer;margin-top:1rem}
+.chemistry-close:hover{transform:translateY(-1px);box-shadow:0 8px 22px #42e08b44}
+
+@keyframes ch-card-in{0%{opacity:0;transform:translateY(40px) scale(.85)}100%{opacity:1;transform:translateY(0) scale(1)}}
+.chemistry-overlay.visible .chemistry-card{animation:ch-card-in .5s cubic-bezier(.2,.8,.2,1) both}
+.chemistry-overlay.visible .chemistry-card:nth-child(1){animation-delay:.06s}
+.chemistry-overlay.visible .chemistry-card:nth-child(2){animation-delay:.18s}
+.chemistry-overlay.visible .chemistry-card:nth-child(3){animation-delay:.30s}
+.chemistry-overlay.visible .chemistry-card:nth-child(4){animation-delay:.42s}
+.chemistry-overlay.visible .chemistry-card:nth-child(5){animation-delay:.54s}
+.chemistry-overlay.visible .chemistry-card:nth-child(6){animation-delay:.66s}
+
+@keyframes ch-link-glow{0%{box-shadow:0 0 0 0 #42e08b00}50%{box-shadow:0 0 30px 6px #42e08b88}100%{box-shadow:0 0 0 0 #42e08b00}}
+.chemistry-overlay.visible .chemistry-card.is-new{animation:ch-card-in .5s cubic-bezier(.2,.8,.2,1) both,ch-link-glow 2.4s ease-in-out .6s infinite}
+
+@keyframes ch-bg-pulse{0%,100%{background:radial-gradient(circle at 50% 50%,#0a342399 0%,#06080aee 80%)}50%{background:radial-gradient(circle at 50% 50%,#1c4c3aaa 0%,#06080aee 80%)}}
+.chemistry-overlay.visible .chemistry-backdrop{animation:ch-bg-pulse 3s ease-in-out infinite}
+
+@media(max-width:1100px){.roster .pitch.side-pitch{height:420px}.roster .pitch.side-pitch .pitch-slot{width:76px;padding:.25rem .35rem;font-size:.62rem}}
+
