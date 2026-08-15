@@ -839,13 +839,13 @@ function onlineRoom(){
     </div>
     
     <div class="players-status">
-      <div class="player-status ${you === 'A' ? 'you' : 'waiting'}">
+      <div class="player-status ${players.A?.connected ? 'connected' : 'waiting'}">
         <span class="status-dot"></span>
         <span class="player-name">${esc(players.A?.nickname || '房主')}</span>
-        <span class="player-role">房主</span>
+        <span class="player-role">房主${you === 'A' ? ' · 你' : ''}</span>
       </div>
       ${players.B ? `
-        <div class="player-status connected">
+        <div class="player-status ${players.B.connected ? 'connected' : 'waiting'}">
           <span class="status-dot"></span>
           <span class="player-name">${esc(players.B.nickname)}</span>
           <span class="player-role">访客</span>
@@ -886,8 +886,8 @@ function onlineRoom(){
   }).join('');
   
   const deadline = m.deadline ? Math.max(0, Math.ceil((m.deadline - Date.now()) / 1000)) : 0;
-  const choiceOwner = state.choiceOwner;
-  const isYourTurn = choiceOwner === you;
+  const activeSide = m.phase === 'ORDER' ? state.choiceOwner : m.phase === 'BAN' ? m.banTurn : m.phase === 'PICK' ? m.pickTurn : null;
+  const isYourTurn = activeSide === you;
   
   const rosterOnline = (side) => `<aside class="roster ${side.toLowerCase()}">
     <h3>${side === 'A' ? (players.A?.nickname || '玩家A') : (players.B?.nickname || '玩家B')}</h3>
@@ -915,7 +915,7 @@ function onlineRoom(){
       <main class="board">
         <div class="turn-banner ${isYourTurn?'player':'ai'}">
           <b>${isYourTurn?'你的回合':'等待对方'}</b>
-          <span>${m.phase==='ORDER'?'决定本轮先后手':m.phase==='BAN'?`第${m.banTurn+1}/6禁用`:m.phase==='PICK'?'选择球员':'进行中'}</span>
+          <span>${m.phase==='ORDER'?'决定本轮先后手':m.phase==='BAN'?`第${m.banCount+1}/6禁用`:m.phase==='PICK'?'选择球员':'进行中'}</span>
         </div>
         ${m.phase==='ORDER'&&isYourTurn?`<div class="choice-grid online-choice">
           <button data-online-order="first">我先禁</button>
