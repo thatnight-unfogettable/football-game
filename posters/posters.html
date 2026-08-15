@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>绿茵禁选对决 · 小红书海报</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+  body{background:#1a1a1a;padding:24px;display:flex;flex-direction:column;gap:32px;align-items:center}
+  .poster{
+    width:1242px;height:1660px;
+    background:#0a0e15;color:#fff;
+    position:relative;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+  }
+  .poster.p1{background:radial-gradient(ellipse at 50% 30%,#0d3a2a 0%,#061711 50%,#020604 100%)}
+  .poster.p2{background:radial-gradient(ellipse at 50% 50%,#2a0d1a 0%,#170610 60%,#050204 100%)}
+  .poster.p3{background:radial-gradient(ellipse at 50% 40%,#1c1342 0%,#0c0820 60%,#04030c 100%)}
+  .poster.p4{background:linear-gradient(180deg,#0d432d 0%,#082b1c 50%,#04140c 100%)}
+  .poster.p5{background:radial-gradient(ellipse at 50% 20%,#3d1a05 0%,#1a0c02 60%,#08030a 100%)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;width:100%;max-width:2600px}
+  .label{color:#888;font-size:14px;text-align:center;letter-spacing:2px;text-transform:uppercase}
+  /* ======== 通用装饰 ======== */
+  .corner{position:absolute;width:140px;height:140px;border:2px solid rgba(255,255,255,.15);border-radius:20px}
+  .corner.tl{top:40px;left:40px;border-right:none;border-bottom:none}
+  .corner.br{bottom:40px;right:40px;border-left:none;border-top:none}
+  .stamp{position:absolute;top:60px;right:60px;border:3px solid #42e08b;color:#42e08b;padding:14px 24px;border-radius:14px;font-weight:900;letter-spacing:2px;font-size:22px;transform:rotate(8deg)}
+  .footer-tag{position:absolute;bottom:60px;left:0;right:0;text-align:center;color:rgba(255,255,255,.35);font-size:22px;letter-spacing:8px}
+  /* ======== Poster 1: 主KV ======== */
+  .p1 .kicker{position:absolute;top:120px;left:0;right:0;text-align:center;color:#42e08b;font-size:32px;letter-spacing:12px;font-weight:700}
+  .p1 h1{position:absolute;top:200px;left:0;right:0;text-align:center;font-size:220px;font-weight:900;line-height:.95;letter-spacing:-4px}
+  .p1 h1 .green{color:#42e08b}
+  .p1 .sub{position:absolute;top:660px;left:0;right:0;text-align:center;color:#f6c65b;font-size:48px;font-weight:700;letter-spacing:6px}
+  .p1 .tagline{position:absolute;top:760px;left:0;right:0;text-align:center;color:#fff;font-size:62px;font-weight:900}
+  .p1 .tagline em{font-style:normal;color:#ff5d70}
+  .p1 .vs{position:absolute;top:900px;left:50%;transform:translateX(-50%);width:1000px;height:280px;background:linear-gradient(135deg,#0d3a2a 0%,#171b29 50%,#3d0d1c 100%);border-radius:30px;display:flex;align-items:center;justify-content:space-around;border:2px solid rgba(255,255,255,.1)}
+  .p1 .vs-card{text-align:center}
+  .p1 .vs-card .role{font-size:28px;color:#5e9eff;font-weight:700}
+  .p1 .vs-card.foe .role{color:#ff5d70}
+  .p1 .vs-card .name{font-size:72px;font-weight:900;margin:10px 0;color:#fff}
+  .p1 .vs-card .pos{font-size:22px;color:#8fa09a;letter-spacing:4px}
+  .p1 .vs-card .rat{font-size:42px;color:#f6c65b;font-weight:900;margin-top:6px}
+  .p1 .vs-mid{font-size:140px;font-weight:900;color:rgba(246,198,91,.5);letter-spacing:8px}
+  .p1 .features{position:absolute;top:1230px;left:0;right:0;display:flex;justify-content:center;gap:30px}
+  .p1 .feat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:24px 36px;text-align:center;min-width:240px}
+  .p1 .feat b{font-size:28px;color:#42e08b;font-weight:900;display:block}
+  .p1 .feat span{font-size:22px;color:#fff;font-weight:600;margin-top:8px;display:block}
+  .p1 .feat small{font-size:18px;color:#8fa09a;margin-top:6px;display:block}
+  .p1 .play-cta{position:absolute;bottom:160px;left:50%;transform:translateX(-50%);background:#42e08b;color:#04130c;padding:28px 80px;border-radius:80px;font-size:38px;font-weight:900;letter-spacing:4px;box-shadow:0 12px 40px rgba(66,224,139,.4)}
+  .p1 .qr{position:absolute;bottom:180px;right:60px;width:180px;height:180px;background:#fff;border-radius:18px;display:flex;align-items:center;justify-content:center;color:#000;font-size:20px;text-align:center;font-weight:700}
+
+  /* ======== Poster 2: 规则/玩法 ======== */
+  .p2 .kicker{position:absolute;top:100px;left:0;right:0;text-align:center;color:#ff5d70;font-size:34px;letter-spacing:10px;font-weight:800}
+  .p2 h2{position:absolute;top:170px;left:0;right:0;text-align:center;font-size:140px;font-weight:900;line-height:1;letter-spacing:2px}
+  .p2 h2 em{font-style:normal;color:#ff5d70}
+  .p2 .sub-en{position:absolute;top:380px;left:0;right:0;text-align:center;color:rgba(255,255,255,.5);font-size:30px;letter-spacing:10px;font-weight:600}
+  .p2 .steps{position:absolute;top:480px;left:100px;right:100px;display:flex;flex-direction:column;gap:36px}
+  .p2 .step{display:flex;align-items:center;gap:36px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:32px 36px}
+  .p2 .step-num{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#ff5d70,#ff8da0);display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;flex-shrink:0;color:#fff}
+  .p2 .step:nth-child(2) .step-num{background:linear-gradient(135deg,#f6c65b,#ffd980);color:#1a0c02}
+  .p2 .step:nth-child(3) .step-num{background:linear-gradient(135deg,#5e9eff,#9bc1ff);color:#0a1428}
+  .p2 .step:nth-child(4) .step-num{background:linear-gradient(135deg,#42e08b,#80f0ad);color:#04130c}
+  .p2 .step b{font-size:38px;font-weight:900;display:block;color:#fff}
+  .p2 .step p{font-size:22px;color:#8fa09a;margin-top:6px;line-height:1.5}
+  .p2 .step .badge{background:#f6c65b;color:#1a0c02;padding:6px 16px;border-radius:99px;font-size:18px;font-weight:800;display:inline-block;margin-top:10px}
+  .p2 .key-point{position:absolute;top:1500px;left:0;right:0;text-align:center;color:#fff;font-size:34px;font-weight:800}
+  .p2 .key-point em{font-style:normal;color:#ff5d70}
+  .p2 .play-cta{position:absolute;bottom:160px;left:50%;transform:translateX(-50%);background:#ff5d70;color:#fff;padding:28px 80px;border-radius:80px;font-size:38px;font-weight:900;letter-spacing:4px;box-shadow:0 12px 40px rgba(255,93,112,.4)}
+
+  /* ======== Poster 3: 球员卡展示 ======== */
+  .p3 .kicker{position:absolute;top:100px;left:0;right:0;text-align:center;color:#f6c65b;font-size:32px;letter-spacing:12px;font-weight:700}
+  .p3 h2{position:absolute;top:160px;left:0;right:0;text-align:center;font-size:160px;font-weight:900;line-height:1;color:#fff;letter-spacing:4px}
+  .p3 h2 em{font-style:normal;background:linear-gradient(135deg,#f6c65b,#ff5d70);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .p3 .sub{position:absolute;top:380px;left:0;right:0;text-align:center;color:rgba(255,255,255,.6);font-size:32px;letter-spacing:6px;font-weight:600}
+  .p3 .cards{position:absolute;top:500px;left:80px;right:80px;display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+  .p3 .card{position:relative;height:480px;border-radius:28px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:36px;border:2px solid}
+  .p3 .card.SSS{background:linear-gradient(160deg,#3d2a05 0%,#1a1102 100%);border-color:#f6c65b;box-shadow:0 0 50px rgba(246,198,91,.3)}
+  .p3 .card.SS{background:linear-gradient(160deg,#2a2a3a 0%,#0f0f1c 100%);border-color:#d8e1e8;box-shadow:0 0 50px rgba(216,225,232,.2)}
+  .p3 .card.S{background:linear-gradient(160deg,#3a1f0d 0%,#1a0a02 100%);border-color:#be7a4c}
+  .p3 .card .grade{position:absolute;top:28px;left:36px;font-size:42px;font-weight:900;letter-spacing:2px}
+  .p3 .card.SSS .grade{color:#f6c65b}
+  .p3 .card.SS .grade{color:#d8e1e8}
+  .p3 .card.S .grade{color:#be7a4c}
+  .p3 .card .pos{position:absolute;top:36px;right:36px;font-size:22px;color:rgba(255,255,255,.6);letter-spacing:4px;font-weight:700}
+  .p3 .card .avatar{position:absolute;top:90px;left:36px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:54px;font-weight:900}
+  .p3 .card .rating{position:absolute;top:90px;right:36px;font-size:90px;font-weight:900;color:rgba(255,255,255,.15)}
+  .p3 .card .name{font-size:42px;font-weight:900;color:#fff;line-height:1.1;margin-bottom:8px}
+  .p3 .card .name small{font-size:20px;color:rgba(255,255,255,.5);font-weight:600;display:block}
+  .p3 .card .meta{font-size:20px;color:rgba(255,255,255,.55);font-weight:500;margin-top:6px}
+  .p3 .card .meta span{color:#f6c65b;font-weight:700}
+  .p3 .total{position:absolute;top:1520px;left:0;right:0;text-align:center;color:#fff;font-size:34px;font-weight:700}
+  .p3 .total b{color:#f6c65b;font-size:60px;font-weight:900;margin:0 8px}
+
+  /* ======== Poster 4: 阵型摆位 ======== */
+  .p4 h2{position:absolute;top:100px;left:0;right:0;text-align:center;font-size:130px;font-weight:900;line-height:1;color:#fff;letter-spacing:2px}
+  .p4 h2 em{font-style:normal;color:#42e08b}
+  .p4 .sub{position:absolute;top:280px;left:0;right:0;text-align:center;color:rgba(255,255,255,.65);font-size:30px;letter-spacing:6px;font-weight:600}
+  .p4 .pitch{position:absolute;top:400px;left:120px;width:1000px;height:1100px;background:linear-gradient(180deg,#0d432d 0%,#0a3423 50%,#082b1c 100%);border:4px solid rgba(255,255,255,.2);border-radius:24px}
+  .p4 .pitch::before{content:'';position:absolute;inset:4%;border:3px solid rgba(255,255,255,.15);border-radius:14px}
+  .p4 .pitch::after{content:'';position:absolute;top:49%;left:50%;width:140px;height:140px;border:3px solid rgba(255,255,255,.15);border-radius:50%;transform:translate(-50%,-50%)}
+  .p4 .slot{position:absolute;width:170px;padding:14px 12px;background:rgba(15,22,30,.85);border:2px solid #42e08b;border-radius:14px;text-align:center;transform:translate(-50%,-50%)}
+  .p4 .slot .p{font-size:16px;color:#8fa09a;letter-spacing:2px;font-weight:700;margin-bottom:4px}
+  .p4 .slot .n{font-size:22px;color:#fff;font-weight:900;margin-bottom:6px}
+  .p4 .slot .r{font-size:18px;color:#f6c65b;font-weight:900}
+  .p4 .side{position:absolute;top:400px;right:80px;width:120px;height:1100px;display:flex;flex-direction:column;justify-content:space-around;align-items:center}
+  .p4 .side .vs-block{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:16px 8px;text-align:center;width:100%}
+  .p4 .side .vs-block.you{border-color:#5e9eff}
+  .p4 .side .vs-block.foe{border-color:#ff5d70}
+  .p4 .side .vs-block b{font-size:20px;color:#fff;display:block;margin-bottom:4px}
+  .p4 .side .vs-block span{font-size:24px;color:#f6c65b;font-weight:900;display:block}
+  .p4 .side .vs-block.you span{color:#5e9eff}
+  .p4 .side .vs-block.foe span{color:#ff5d70}
+  .p4 .stats{position:absolute;bottom:140px;left:120px;right:120px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+  .p4 .stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:24px;text-align:center}
+  .p4 .stat b{font-size:48px;color:#42e08b;font-weight:900;display:block}
+  .p4 .stat span{font-size:22px;color:rgba(255,255,255,.7);font-weight:600;display:block;margin-top:6px}
+
+  /* ======== Poster 5: 朋友圈/口碑 ======== */
+  .p5 .kicker{position:absolute;top:100px;left:0;right:0;text-align:center;color:#f6c65b;font-size:32px;letter-spacing:14px;font-weight:700}
+  .p5 h2{position:absolute;top:170px;left:0;right:0;text-align:center;font-size:130px;font-weight:900;line-height:1;color:#fff}
+  .p5 h2 em{font-style:normal;color:#f6c65b}
+  .p5 .sub{position:absolute;top:350px;left:0;right:0;text-align:center;color:rgba(255,255,255,.6);font-size:28px;letter-spacing:4px}
+  .p5 .quotes{position:absolute;top:460px;left:90px;right:90px;display:flex;flex-direction:column;gap:30px}
+  .p5 .quote{background:rgba(255,255,255,.05);border-left:6px solid #f6c65b;border-radius:18px;padding:32px 36px;position:relative}
+  .p5 .quote:nth-child(2){border-left-color:#42e08b}
+  .p5 .quote:nth-child(3){border-left-color:#ff5d70}
+  .p5 .quote::before{content:'"';position:absolute;top:-10px;left:18px;font-size:90px;color:rgba(246,198,91,.25);font-family:Georgia,serif;line-height:1}
+  .p5 .quote p{font-size:28px;color:#fff;line-height:1.6;font-weight:600}
+  .p5 .quote .who{display:flex;align-items:center;gap:14px;margin-top:18px}
+  .p5 .quote .who .avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#42e08b,#5e9eff);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900}
+  .p5 .quote .who b{color:#f6c65b;font-size:22px;font-weight:800}
+  .p5 .quote .who span{color:rgba(255,255,255,.5);font-size:18px;margin-left:auto}
+  .p5 .cta{position:absolute;bottom:180px;left:0;right:0;text-align:center}
+  .p5 .cta .play{background:#f6c65b;color:#1a0c02;padding:30px 90px;border-radius:80px;font-size:40px;font-weight:900;letter-spacing:6px;display:inline-block;box-shadow:0 12px 40px rgba(246,198,91,.4)}
+  .p5 .cta .tip{margin-top:30px;font-size:24px;color:rgba(255,255,255,.6);letter-spacing:2px}
+</style>
+</head>
+<body>
+
+<!-- ============ 海报1：主KV ============ -->
+<div class="label">海报 1 / 主视觉 KV</div>
+<div class="poster p1">
+  <div class="corner tl"></div>
+  <div class="corner br"></div>
+  <div class="stamp">2026 · 新作</div>
+
+  <div class="kicker">⚽ 足 球 × BP 对 决 ⚽</div>
+  <h1>绿茵<br><span class="green">禁选</span>对决</h1>
+  <div class="sub">FOOTBALL · BAN · PICK · ARENA</div>
+  <div class="tagline">把 王者 BP 搬 进 <em>绿 茵 场</em></div>
+
+  <div class="vs">
+    <div class="vs-card">
+      <div class="role">你 · 主队</div>
+      <div class="name">姆巴佩</div>
+      <div class="pos">中锋 · 法国</div>
+      <div class="rat">98</div>
+    </div>
+    <div class="vs-mid">VS</div>
+    <div class="vs-card foe">
+      <div class="role">对手 · AI</div>
+      <div class="name">罗德里</div>
+      <div class="pos">后腰 · 西班牙</div>
+      <div class="rat">98</div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feat">
+      <b>6 轮</b>
+      <span>策略 BP</span>
+      <small>禁 4 选 8</small>
+    </div>
+    <div class="feat">
+      <b>11 人</b>
+      <span>真实阵容</span>
+      <small>4-3-3 摆位</small>
+    </div>
+    <div class="feat">
+      <b>200+</b>
+      <span>球员卡池</span>
+      <small>真实评分</small>
+    </div>
+  </div>
+
+  <div class="play-cta">👉 立即开战</div>
+  <div class="qr">扫码<br>开黑</div>
+
+  <div class="footer-tag">F O O T B A L L   B P   A R E N A</div>
+</div>
+
+<!-- ============ 海报2：4步玩法 ============ -->
+<div class="label">海报 2 / 4 步玩法规则</div>
+<div class="poster p2">
+  <div class="corner tl"></div>
+  <div class="corner br"></div>
+  <div class="stamp">玩法 · 4 步</div>
+
+  <div class="kicker">如 何 上 手</div>
+  <h2>四步<br><em>组 队 干 翻 对 手</em></h2>
+  <div class="sub-en">HOW · TO · PLAY · IN · 4 · STEPS</div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <b>建房间 · 拉兄弟</b>
+        <p>6 位房间码 / 邀请链接 / 单人 vs AI<br>微信群喊一嗓子，3 秒进房</p>
+        <div class="badge">免注册 · 即开即玩</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <b>轮流 BAN · 禁掉关键人</b>
+        <p>共 4 个 BAN 位<br>不喜欢的球星 · 直接拉黑 ❌</p>
+        <div class="badge">位置均衡 · 选位优先</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <b>挑阵容 · 摆 4-3-3</b>
+        <p>从卡池里抢 8 位球星<br>左右边锋 / 中场 / 后卫自由摆位</p>
+        <div class="badge">真实评分 · 位置适配</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <b>比分对决 · 看 MVP</b>
+        <p>系统自动算分 · 高分胜出<br>当场出 MVP · 完赛可回放复盘</p>
+        <div class="badge">回放系统 · 战术复盘</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="key-point">不会玩？<em>点开就懂</em> · 3 分钟上手</div>
+  <div class="play-cta">🚀 进入战场</div>
+</div>
+
+<!-- ============ 海报3：球员卡池 ============ -->
+<div class="label">海报 3 / 球员卡池展示</div>
+<div class="poster p3">
+  <div class="corner tl"></div>
+  <div class="corner br"></div>
+  <div class="stamp">卡池 · 200+</div>
+
+  <div class="kicker">REAL · PLAYERS</div>
+  <h2>球 星 <em>卡 池</em></h2>
+  <div class="sub">姆巴佩 · 罗德里 · 哈兰德 · 维尼修斯</div>
+
+  <div class="cards">
+    <div class="card SSS">
+      <div class="grade">SSS</div>
+      <div class="pos">ST</div>
+      <div class="avatar">K</div>
+      <div class="rating">98</div>
+      <div class="name">姆巴佩<small>Mbappé</small></div>
+      <div class="meta">皇家马德里 · <span>西甲</span></div>
+    </div>
+    <div class="card SS">
+      <div class="grade">SS</div>
+      <div class="pos">CDM</div>
+      <div class="avatar">R</div>
+      <div class="rating">98</div>
+      <div class="name">罗德里<small>Rodri</small></div>
+      <div class="meta">曼城 · <span>英超</span></div>
+    </div>
+    <div class="card S">
+      <div class="grade">S</div>
+      <div class="pos">LW</div>
+      <div class="avatar">V</div>
+      <div class="rating">96</div>
+      <div class="name">维尼修斯<small>Vinícius Jr.</small></div>
+      <div class="meta">皇家马德里 · <span>西甲</span></div>
+    </div>
+  </div>
+
+  <div class="total">全 阵 容 收 录 <b>200+</b> 真 实 球 星 · 持 续 更 新</div>
+</div>
+
+<!-- ============ 海报4：阵型摆位 ============ -->
+<div class="label">海报 4 / 阵型摆位对比</div>
+<div class="poster p4">
+  <div class="corner tl"></div>
+  <div class="corner br"></div>
+  <div class="stamp">4-3-3 · 摆位</div>
+
+  <h2>真 球 场 摆 <em>4-3-3</em></h2>
+  <div class="sub">TACTICAL · LINEUP · VIEW</div>
+
+  <div class="pitch">
+    <!-- 4-3-3 阵型 -->
+    <div class="slot" style="left:20%;top:18%"><div class="p">LW 左边锋</div><div class="n">姆巴佩</div><div class="r">98</div></div>
+    <div class="slot" style="left:50%;top:12%"><div class="p">ST 中锋</div><div class="n">哈兰德</div><div class="r">97</div></div>
+    <div class="slot" style="left:80%;top:18%"><div class="p">RW 右边锋</div><div class="n">维尼修斯</div><div class="r">96</div></div>
+
+    <div class="slot" style="left:25%;top:42%"><div class="p">CM 中前卫</div><div class="n">德布劳内</div><div class="r">95</div></div>
+    <div class="slot" style="left:50%;top:55%"><div class="p">CDM 后腰</div><div class="n">罗德里</div><div class="r">98</div></div>
+    <div class="slot" style="left:75%;top:42%"><div class="p">CM 中前卫</div><div class="n">贝林厄姆</div><div class="r">95</div></div>
+
+    <div class="slot" style="left:14%;top:72%"><div class="p">LB 左后卫</div><div class="n">阿方索</div><div class="r">93</div></div>
+    <div class="slot" style="left:38%;top:78%"><div class="p">CB 中卫</div><div class="n">范戴克</div><div class="r">94</div></div>
+    <div class="slot" style="left:62%;top:78%"><div class="p">CB 中卫</div><div class="n">迪亚斯</div><div class="r">93</div></div>
+    <div class="slot" style="left:86%;top:72%"><div class="p">RB 右后卫</div><div class="n">卡瓦哈尔</div><div class="r">92</div></div>
+
+    <div class="slot" style="left:50%;top:92%"><div class="p">GK 门将</div><div class="n">库尔图瓦</div><div class="r">90</div></div>
+  </div>
+
+  <div class="side">
+    <div class="vs-block you">
+      <b>你</b>
+      <span>2486</span>
+    </div>
+    <div class="vs-block foe">
+      <b>对手</b>
+      <span>2391</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>2486</b><span>总评分</span></div>
+    <div class="stat"><b>+95</b><span>评分领先</span></div>
+    <div class="stat"><b>S×4</b><span>S级球员</span></div>
+    <div class="stat"><b>完美</b><span>位置适配</span></div>
+  </div>
+</div>
+
+<!-- ============ 海报5：口碑/朋友圈 ============ -->
+<div class="label">海报 5 / 玩家口碑 · 朋友圈</div>
+<div class="poster p5">
+  <div class="corner tl"></div>
+  <div class="corner br"></div>
+  <div class="stamp">真 实 · 玩 家 反 馈</div>
+
+  <div class="kicker">P L A Y E R · S A Y</div>
+  <h2>球 迷 都 <em>玩 上 瘾</em></h2>
+  <div class="sub">真 · 球迷 · 真 · 上头</div>
+
+  <div class="quotes">
+    <div class="quote">
+      <p>以前看球只能嘴炮，现在用 BP 跟哥们真刀真枪干，谁阵容没摆好当场红温 😂</p>
+      <div class="who">
+        <div class="avatar">A</div>
+        <b>@皇马老球迷</b>
+        <span>5分钟前</span>
+      </div>
+    </div>
+    <div class="quote">
+      <p>选人环节像王者 BP，摆位又跟实况一模一样，这就是为球迷量身定做的啊！</p>
+      <div class="who">
+        <div class="avatar">B</div>
+        <b>@FM老玩家</b>
+        <span>20分钟前</span>
+      </div>
+    </div>
+    <div class="quote">
+      <p>等位的时候掏出手机和同事来一局，6 位房间码太方便，已经上了 MVP 🏆</p>
+      <div class="who">
+        <div class="avatar">C</div>
+        <b>@公司球队前锋</b>
+        <span>1小时前</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta">
+    <div class="play">⚽ 我 也 要 玩</div>
+    <div class="tip">小红书搜索「绿茵禁选对决」 · 浏览器开黑无需下载</div>
+  </div>
+</div>
+
+</body>
+</html>

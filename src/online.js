@@ -3,6 +3,18 @@ const TOKEN_KEY = 'bp-online-token';
 const ROOM_KEY = 'bp-online-room';
 const NICKNAME_KEY = 'bp-online-nickname';
 
+function resolveWsHost() {
+  // 1. 部署时通过 Vercel 环境变量 VITE_WS_HOST 注入（构建期常量）
+  // 2. 运行时通过 window.__WS_HOST__ 注入
+  // 3. 兜底：同源部署（Render / Railway 单体部署）
+  const meta = typeof import.meta !== 'undefined' && import.meta.env;
+  const fromBuild = meta && (meta.VITE_WS_HOST || meta.PUBLIC_WS_HOST);
+  const fromWindow = typeof window !== 'undefined' && (window.__WS_HOST__ || window.WS_HOST);
+  if (fromBuild) return String(fromBuild).replace(/^wss?:\/\//, '').replace(/\/+$/, '');
+  if (fromWindow) return String(fromWindow).replace(/^wss?:\/\//, '').replace(/\/+$/, '');
+  return null; // 同源
+}
+
 export class OnlineClient {
   constructor(handlers = {}) {
     this.handlers = handlers;
@@ -14,8 +26,15 @@ export class OnlineClient {
   }
   connect() {
     return new Promise((resolve, reject) => {
-      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${location.host}/ws`;
+      const wsHost = resolveWsHost();
+      let wsUrl;
+      if (wsHost) {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${protocol}//${wsHost}/ws`;
+      } else {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${protocol}//${location.host}/ws`;
+      }
       console.log('[OnlineClient] Connecting to:', wsUrl);
       this.socket = new WebSocket(wsUrl);
       this.socket.addEventListener('open', () => { 

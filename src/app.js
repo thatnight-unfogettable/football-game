@@ -152,9 +152,11 @@ function beginRound(order) {
     // 先选的一方（玩家选择order=PLAYER时，PLAYER先选）
     game.firstPicker = order;
   } else {
+    // single 轮：「先选」= 球员先 pick，「先禁」由 firstPicker 反方担任
     game.phase = 'ban';
     game.subPhase = 'ban';
-    game.firstBan = order;
+    game.firstBan = order === 'PLAYER' ? 'AI' : 'PLAYER';
+    game.firstPicker = order;
   }
   selectedId = null;
   game.log.push({ type: 'round', round: game.round + 1, info: roundInfo, candidates: [...game.candidates], firstBan: order, mode: roundInfo.type });
@@ -162,12 +164,13 @@ function beginRound(order) {
   save(); render(); scheduleAI();
 }
 function currentActor() {
-  const roundInfo = game.rounds[game.round];
+  if (!game) return null;
+  const roundInfo = game.rounds && Number.isInteger(game.round) ? game.rounds[game.round] : null;
   if (!roundInfo) return null;
   if (game.subPhase === 'prePick') {
     // 双方轮流选1人，先选者先选第二个
     const taken = (game.prePicks || []).length;
-    if (taken === 0) return game.firstPicker;
+    if (taken === 0) return game.firstPicker || 'PLAYER';
     return game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER';
   }
   if (game.subPhase === 'ban') {
@@ -175,21 +178,26 @@ function currentActor() {
   }
   if (game.subPhase === 'postPick') {
     // postPick：先选者先选（与prePick一致）
-    const taken = (game.prePicks || []).length;
     // prePick已经2人（prePicks[0..1]），postPick不存prePicks，而是用专门的 postPicks
     const postTaken = (game.postPicks || []).length;
-    if (postTaken === 0) return game.firstPicker;
+    if (postTaken === 0) return game.firstPicker || 'PLAYER';
+    return game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER';
+  }
+  if (game.subPhase === 'pick') {
+    // single 轮的 pick 阶段：双方轮流各选 1 人
+    const postTaken = (game.postPicks || []).length;
+    if (postTaken === 0) return game.firstPicker || 'PLAYER';
     return game.firstPicker === 'PLAYER' ? 'AI' : 'PLAYER';
   }
   return null;
 }
 function available() {
   const removed = new Set([
-    ...game.roundBans.map(x=>x.id),
+    ...((game.roundBans || []).map(x=>x.id)),
     ...(game.prePicks || []),
     ...(game.postPicks || []),
   ]);
-  return game.candidates.filter(id => !removed.has(id));
+  return (game.candidates || []).filter(id => !removed.has(id));
 }
 function confirmPlayerAction() {
   if (!selectedId || currentActor() !== 'PLAYER') return;
@@ -197,6 +205,8 @@ function confirmPlayerAction() {
     applyPrePick('PLAYER', selectedId, '玩家选择');
   } else if (game.subPhase === 'ban') {
     applyBan('PLAYER', selectedId, '玩家决策');
+  } else if (game.subPhase === 'pick') {
+    applyPick('PLAYER', selectedId, '玩家选择');
   }
 }
 function applyPrePick(actor, id, reason) {
@@ -255,11 +265,10 @@ function applyBan(actor, id, reason) {
       // 进入postPick阶段
     }
   } else {
-    // single轮：ban6次后切换到pick（各选1人）
+    // single轮：ban6次后切换到pick（各选1人）。firstPicker 已在 beginRound 中按 order 锁定。
     if (game.banTurn >= 6) {
       game.subPhase = 'pick';
       game.phase = 'pick';
-      game.firstPicker = game.roundBans[5]?.actor === 'PLAYER' ? 'AI' : 'PLAYER';
       game.postPicks = [];
     }
   }
@@ -293,7 +302,7 @@ function candidateThreat(id, actor, action) {
 }
 function aiChoice(action) {
   const ids = available();
-  const difficulty = game.settings.difficulty;
+  const difficulty = game?.settings?.difficulty || 'normal';
   const mistake = {easy:.30, normal:.15, hard:.05}[difficulty];
   if (ids.length === 0) return null;
   if (rng() < mistake) return ids[Math.floor(rng()*ids.length)];
@@ -303,27 +312,36 @@ function aiChoice(action) {
 }
 function scheduleAI() {
   clearTimeout(aiTimer);
-  const actor = currentActor();
-  if (actor !== 'AI') return;
+  try {
+    const actor = currentActor();
+    if (actor !== 'AI') return;
+  } catch (err) {
+    console.error('[scheduleAI] currentActor failed:', err);
+    return;
+  }
   aiTimer = setTimeout(() => {
-    const sub = game.subPhase;
-    let action = sub;
-    if (sub === 'prePick' || sub === 'postPick') action = 'pick';
-    if (sub === 'ban') action = 'ban';
-    const id = aiChoice(action);
-    if (!id) return;
-    const p = player(id);
-    const reason = sub === 'ban'
-      ? (p.rating >= 88 ? '高评分威胁' : (game.settings.personality === 'counter' ? '阻断你的组合' : '控制候选池'))
-      : (p.rating >= 88 ? '纸面核心' : (game.settings.personality === 'chemistry' ? '增强化学反应' : '提升综合实力'));
-    if (sub === 'prePick' || sub === 'postPick') {
-      applyPrePick('AI', id, reason);
-    } else if (sub === 'ban') {
-      applyBan('AI', id, reason);
-    } else if (sub === 'pick') {
-      applyPick('AI', id, reason);
+    try {
+      const sub = game.subPhase;
+      let action = sub;
+      if (sub === 'prePick' || sub === 'postPick') action = 'pick';
+      if (sub === 'ban') action = 'ban';
+      const id = aiChoice(action);
+      if (!id) return;
+      const p = player(id);
+      const reason = sub === 'ban'
+        ? (p.rating >= 88 ? '高评分威胁' : (game.settings.personality === 'counter' ? '阻断你的组合' : '控制候选池'))
+        : (p.rating >= 88 ? '纸面核心' : (game.settings.personality === 'chemistry' ? '增强化学反应' : '提升综合实力'));
+      if (sub === 'prePick' || sub === 'postPick') {
+        applyPrePick('AI', id, reason);
+      } else if (sub === 'ban') {
+        applyBan('AI', id, reason);
+      } else if (sub === 'pick') {
+        applyPick('AI', id, reason);
+      }
+    } catch (err) {
+      console.error('[AI turn] failed:', err);
     }
-  }, {fast:250, normal:750, slow:1400}[game.settings.speed]);
+  }, {fast:250, normal:750, slow:1400}[game.settings?.speed || 'normal']);
 }
 function continueRound() {
   // 重置轮次状态
@@ -455,7 +473,8 @@ function header() {
 function menu() { const active=localStorage.getItem(ACTIVE_KEY); return `<div class="landing"><div class="landing-copy"><span class="kicker">BAN · PICK · BUILD</span><h1>禁掉威胁<br><em>选出你的最强十一人</em></h1><p>十轮足球BP。每轮12人、六次禁用、双方各取一人。纸面实力与化学反应共同决定三局两胜。</p><div class="menu-actions"><button class="primary" data-new>开始人机对战</button><button class="accent" data-online>好友在线对战</button>${active?'<button data-resume>继续未完成对局</button>':''}<button data-history>最近20局</button><a href="legacy/index.html">旧经营模式</a></div></div><div class="hero-board"><div class="versus"><span>YOU</span><b>VS</b><span>AI / 好友</span></div><div class="rule-cards"><article><b>12</b><span>每轮候选</span></article><article><b>6</b><span>交替禁用</span></article><article><b>11</b><span>最终阵容</span></article></div></div></div>`; }
 function onlineLobby() { 
   const roomFromUrl=new URLSearchParams(location.search).get('room')||'';
-  const serverUrl = location.origin;
+  const serverUrl = window.WS_HOST ? `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.WS_HOST}` : location.origin;
+  const resolvedHost = window.WS_HOST || '同源 (' + location.host + ')';
   return `<div class="online-lobby">
     <section>
       <span class="kicker">ONLINE FRIEND MATCH</span>
@@ -479,8 +498,8 @@ function onlineLobby() {
       
       <div class="server-info">
         <h3>服务器信息</h3>
-        <p>当前服务器: <code>${esc(serverUrl)}</code></p>
-        <p class="server-tip">确保好友也能访问此服务器地址</p>
+        <p>当前 WS 服务器: <code>${esc(serverUrl)}</code></p>
+        <p class="server-tip">确保好友也能访问此服务器地址（房间链接本身就是 Vercel 前端，WS 握手指向单独的 Render 后端）</p>
       </div>
       
       ${online.error?`<p class="online-error">⚠️ ${esc(online.error)}</p>`:''}
@@ -551,7 +570,7 @@ function bpScreen() {
   } else if (sub === 'pick') {
     const taken = (game.postPicks || []).length;
     title = '选择阶段';
-    desc = `请从剩余${available().length+1}人中选择（第${taken+1}/1人）`;
+    desc = `请从${available().length}人中选择（第${taken+1}/1人）`;
   }
   const actionText = (sub === 'prePick' || sub === 'postPick' || sub === 'pick') ? '选择' : '禁用';
   return `<div class="game">${header()}<div class="bp-layout">${roster('PLAYER')}<main class="board"><div class="turn-banner ${actor?.toLowerCase()}"><b>${actor==='PLAYER'?'你的回合':'AI思考中'}</b><span>${title} · ${desc}</span></div>${bansPanel()}<div class="candidate-grid">${game.candidates.map(id => card(id, {disabled: removed.has(id), selected: selectedId === id, clickable: actor === 'PLAYER'})).join('')}</div><footer><span>${selectedId ? `已选中：${esc(player(selectedId).name)}` : '先查看卡牌信息，再确认操作'}</span><button class="primary" data-confirm ${!selectedId || actor !== 'PLAYER' ? 'disabled' : ''}>确认${actionText}</button></footer></main>${roster('AI')}</div></div>`;
@@ -754,6 +773,33 @@ function onlineRoom(){
 function render() {
   clearTimeout(aiTimer);
   if (!game) { app.innerHTML = menu(); bind(); return; }
+  // 状态校验：当前对局阶段缺失必要字段时回到主菜单，避免页面卡死
+  const needsRounds = ['order','ban','postPick','prePick','pick','summary','lineup','result'].includes(game.phase);
+  if (needsRounds && (!Array.isArray(game.rounds) || !Number.isInteger(game.round))) {
+    console.warn('[render] game state incomplete, resetting', { phase: game.phase, rounds: game.rounds, round: game.round });
+    localStorage.removeItem(ACTIVE_KEY);
+    game = null;
+    app.innerHTML = menu();
+    bind();
+    return;
+  }
+  // 状态自愈 1: banTurn 与 roundBans.length 不一致时强制对齐
+  if (Array.isArray(game.roundBans) && typeof game.banTurn === 'number') {
+    if (game.roundBans.length !== game.banTurn) {
+      console.warn('[render] banTurn/roundBans desynced', { banTurn: game.banTurn, len: game.roundBans.length });
+      game.banTurn = game.roundBans.length;
+    }
+  }
+  // 状态自愈 2: 阵容已满但轮未走完，自动跳到阵容排布
+  if (game.picks && Array.isArray(game.rounds) && Number.isInteger(game.round)) {
+    const playerFull = (game.picks.PLAYER?.length || 0) >= 11;
+    const aiFull = (game.picks.AI?.length || 0) >= 11;
+    if ((playerFull && aiFull) && !['lineup','result'].includes(game.phase)) {
+      console.warn('[render] both lineups full but phase is', game.phase, '-> auto-finalize');
+      try { finalizeLineups(); } catch (e) { console.error(e); }
+      return;
+    }
+  }
   let html;
   if (game.screen === 'online-lobby') html = onlineLobby();
   else if (game.screen === 'online-room') html = onlineRoom();
@@ -768,7 +814,9 @@ function render() {
   else html = menu();
   app.innerHTML = html;
   bind();
-  if (game.screen !== 'online-room') scheduleAI();
+  if (game.screen !== 'online-room' && game.screen !== 'replay') {
+    try { scheduleAI(); } catch (err) { console.error('[render] scheduleAI failed:', err); }
+  }
 }
 function bind() {
   document.querySelector('[data-new]')?.addEventListener('click',()=>{game={screen:'setup'};render();});
@@ -815,7 +863,25 @@ function bind() {
     history.replaceState(null,'',location.pathname);
     reset();
   });
-  document.querySelector('[data-resume]')?.addEventListener('click',()=>{try{game=JSON.parse(localStorage.getItem(ACTIVE_KEY));render();}catch{reset();}});
+  document.querySelector('[data-resume]')?.addEventListener('click',()=>{
+    try {
+      const saved = JSON.parse(localStorage.getItem(ACTIVE_KEY) || 'null');
+      if (!saved || saved.version !== RULE_VERSION || !Array.isArray(saved.rounds) || !Number.isInteger(saved.round)) {
+        localStorage.removeItem(ACTIVE_KEY);
+        reset();
+        return;
+      }
+      // 补齐可能缺失的字段，避免 currentActor 等崩溃
+      saved.prePicks = saved.prePicks || [];
+      saved.postPicks = saved.postPicks || [];
+      saved.roundBans = saved.roundBans || [];
+      saved.bans = saved.bans || { PLAYER: [], AI: [] };
+      saved.picks = saved.picks || { PLAYER: ['shared_courtois'], AI: ['shared_courtois'] };
+      saved.log = saved.log || [];
+      game = saved;
+      render();
+    } catch { reset(); }
+  });
   document.querySelector('[data-history]')?.addEventListener('click',()=>{game={screen:'history'};render();});
   document.querySelector('[data-start]')?.addEventListener('click',()=>newGame({difficulty:document.querySelector('#difficulty').value,personality:document.querySelector('#personality').value,speed:document.querySelector('#speed').value,audio:document.querySelector('#audio').checked,timer:false}));
   document.querySelector('[data-cancel]')?.addEventListener('click',reset);

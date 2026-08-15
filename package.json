@@ -3,16 +3,30 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
     "start:lan": "PORT=3000 node server/server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "posters:html": "echo Already generated at posters/posters.html",
+    "posters:pptx": "node posters/generate-pptx.mjs",
+    "posters:png": "node posters/export-png.mjs",
+    "posters:all": "node posters/generate-pptx.mjs && node posters/export-png.mjs"
   },
   "dependencies": {
     "ws": "latest"
   },
-  "keywords": ["football", "game", "ban-pick", "multiplayer"],
-  "description": "绿茵禁选对决 - 足球BP对战游戏，支持好友在线对战"
+  "keywords": [
+    "football",
+    "game",
+    "ban-pick",
+    "multiplayer"
+  ],
+  "description": "绿茵禁选对决 - 足球BP对战游戏，支持好友在线对战",
+  "devDependencies": {
+    "pptxgenjs": "^4.0.1"
+  }
 }

@@ -6,9 +6,15 @@
   <meta name="theme-color" content="#07110d">
   <title>绿茵禁选对决</title>
   <link rel="stylesheet" href="assets/styles.css">
+  <script>
+    // 可选：跨域 WebSocket 服务器主机名（不包含协议）
+    // 留空时使用同源（同源部署，如 Render / Railway 一体化部署）
+    // 示例：window.WS_HOST = 'football-bp-server.onrender.com';
+    window.WS_HOST = window.WS_HOST || '';
+  </script>
 </head>
 <body>
   <div id="app"></div>
-  <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/app.js?v=3"></script>
 </body>
 </html>
