@@ -866,13 +866,15 @@ function onlineRoom(){
   }
   
   const availableIds = (() => {
-    const bannedIds = m.bans.map(b => b.playerId);
-    const pickedIds = [...(m.picks.A || []), ...(m.picks.B || [])];
-    const used = new Set([...bannedIds, ...pickedIds]);
-    return m.candidates.filter(id => !used.has(id));
+    const removed = new Set([
+      ...(m.roundBans || []).map(item => item.id),
+      ...(m.prePicks || []),
+      ...(m.postPicks || []),
+    ]);
+    return (m.candidates || []).filter(id => !removed.has(id));
   })();
   
-  const cards = m.candidates.map(id => {
+  const cards = (m.candidates || []).map(id => {
     const p = onlinePlayer(id);
     const unavailable = !availableIds.includes(id);
     return `<button class="player-card grade-${p.grade||'B'} ${unavailable?'disabled':''} ${selectedId===id?'selected':''}" data-online-card="${id}" ${unavailable?'disabled':''}>
@@ -885,25 +887,30 @@ function onlineRoom(){
     </button>`;
   }).join('');
   
-  const deadline = m.deadline ? Math.max(0, Math.ceil((m.deadline - Date.now()) / 1000)) : 0;
-  const activeSide = m.phase === 'ORDER' ? state.choiceOwner : m.phase === 'BAN' ? m.banTurn : m.phase === 'PICK' ? m.pickTurn : null;
+  const deadline = state.deadline ? Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000)) : 0;
+  const activeSide = m.phase === 'ORDER' ? state.choiceOwner : m.activeSide;
   const isYourTurn = activeSide === you;
+  const pickPhase = ['PRE_PICK','POST_PICK','PICK'].includes(m.phase);
+  const phaseLabel = m.phase === 'ORDER' ? '选择本轮先后手' : m.phase === 'PRE_PICK' ? '先选1人' : m.phase === 'BAN' ? `第${m.banCount+1}/6次禁用` : m.phase === 'POST_PICK' ? '再选1人' : m.phase === 'PICK' ? '双方各选1人' : m.phase === 'ROUND_END' ? '本轮完成' : m.phase === 'LINEUP' ? '确认阵容' : m.phase === 'RESULT' ? '比赛结束' : '进行中';
   
   const rosterOnline = (side) => `<aside class="roster ${side.toLowerCase()}">
     <h3>${side === 'A' ? (players.A?.nickname || '玩家A') : (players.B?.nickname || '玩家B')}</h3>
     <div class="mini-slots">
       <div class="mini-player fixed">GK 库尔图瓦 · 90</div>
-      ${m.picks[side].filter(id => id !== COURTOIS.id).map(id => {
+      ${(m.picks[side] || []).filter(id => id !== COURTOIS.id).map(id => {
         const p = onlinePlayer(id);
         return `<div class="mini-player">${esc(nameZh(p))}<b>${p.rating}</b></div>`;
       }).join('')}
     </div>
   </aside>`;
+
+  if(m.phase==='LINEUP') return `<div class="game">${rosterOnline('A')}<main class="lineup-page"><span class="kicker">FINAL LINEUP</span><h1>两军对垒 · 4-3-3</h1><p>双方阵容已自动排出最优布局，确认后开始三局两胜。</p><button class="primary" data-online-lineup-ready>确认阵容</button></main>${rosterOnline('B')}</div>`;
+  if(m.phase==='RESULT') return `<div class="game result-page"><main><span class="kicker">BEST OF THREE</span><h1>${m.winner===you?'你赢得了对局':'对手赢得了对局'}</h1><div class="matches">${(m.matches||[]).map((match,i)=>`<article><small>第${i+1}场</small><strong>${match.playerGoals} : ${match.aiGoals}</strong></article>`).join('')}</div><div class="menu-actions"><button class="primary" data-online-rematch>再来一局</button><button data-online-leave>返回主菜单</button></div></main></div>`;
   
   return `<div class="game">
     <header class="app-header">
       <div class="logo">ONLINE<span>XI</span></div>
-      <div class="round-meta">房间 ${room.code} · 第${Math.min(m.round+1,10)}轮<small>${m.phase} · ${deadline}秒</small></div>
+      <div class="round-meta">房间 ${room.code} · 第${Math.min(m.round+1,6)} / 6轮<small>${m.roundType==='double'?'16人双选':'12人单选'} · ${esc(m.roundHint||'')} · ${deadline}秒</small></div>
       <button data-online-leave>退出</button>
     </header>
     <div class="online-status">
@@ -915,14 +922,14 @@ function onlineRoom(){
       <main class="board">
         <div class="turn-banner ${isYourTurn?'player':'ai'}">
           <b>${isYourTurn?'你的回合':'等待对方'}</b>
-          <span>${m.phase==='ORDER'?'决定本轮先后手':m.phase==='BAN'?`第${m.banCount+1}/6禁用`:m.phase==='PICK'?'选择球员':'进行中'}</span>
+          <span>${phaseLabel}</span>
         </div>
         ${m.phase==='ORDER'&&isYourTurn?`<div class="choice-grid online-choice">
-          <button data-online-order="first">我先禁</button>
-          <button class="accent" data-online-order="last">我后禁</button>
+          <button data-online-order="first">我先选</button>
+          <button class="accent" data-online-order="last">我后选</button>
         </div>`:''}
-        <div class="candidate-grid">${cards}</div>
-        ${['BAN','PICK'].includes(m.phase)&&isYourTurn?`<footer>
+        ${m.phase==='ROUND_END'?`<div class="round-summary"><h2>第${m.round+1}轮完成</h2><p>双方确认后进入下一轮</p><button class="primary" data-online-next>继续</button></div>`:`<div class="candidate-grid">${cards}</div>`}
+        ${(m.phase==='BAN'||pickPhase)&&isYourTurn?`<footer>
           <span>${selectedId ? esc(nameZh(onlinePlayer(selectedId))) : '请选择球员'}</span>
           <button class="primary" data-online-confirm ${!selectedId?'disabled':''}>确认${m.phase==='BAN'?'禁用':'选择'}</button>
         </footer>`:''}
@@ -1029,6 +1036,7 @@ function bind() {
     selectedId=null;
   });
   document.querySelector('[data-online-next]')?.addEventListener('click',()=>onlineSend('NEXT'));
+  document.querySelector('[data-online-lineup-ready]')?.addEventListener('click',()=>onlineSend('LINEUP_READY'));
   document.querySelector('[data-online-rematch]')?.addEventListener('click',()=>onlineSend('REMATCH'));
   document.querySelectorAll('[data-online-leave]').forEach(el=>el.onclick=()=>{
     online.client?.socket?.close();
