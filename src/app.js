@@ -26,8 +26,6 @@ let selectedId = null;
 let aiTimer = null;
 let audioContext = null;
 let online = { client: null, state: null, nickname: localStorage.getItem('football-bp-nickname') || '', error: '', invite: '', lastOwnPicks: [] };
-const NORMALIZED_PLAYERS = normalizePlayers();
-const NORMALIZED_PLAYER_MAP = new Map(NORMALIZED_PLAYERS.map(p => [p.id, p]));
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const esc = (value = '') => String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -62,6 +60,8 @@ function inferAlternatives(pos) {
   const map = { ST:['CF'], CF:['ST','CAM'], LW:['LM','RW'], RW:['RM','LW'], LM:['LW','CM'], RM:['RW','CM'], CAM:['CM','CF'], CM:['CAM','CDM'], CDM:['CM','CB'], LB:['LWB','CB'], RB:['RWB','CB'], LWB:['LB','LM'], RWB:['RB','RM'], CB:['LB','RB','CDM'], GK:[] };
   return map[pos] || [];
 }
+const NORMALIZED_PLAYERS = normalizePlayers();
+const NORMALIZED_PLAYER_MAP = new Map(NORMALIZED_PLAYERS.map(p => [p.id, p]));
 function generateRoundPool(category, size, usedIds) {
   // 从指定类别中按评分筛选前若干人，每层取3，确保球员不重复
   const pool = game.players.filter(p => p.position === category && !usedIds.has(p.id)).sort((a,b) => b.rating - a.rating);

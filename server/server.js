@@ -76,6 +76,11 @@ const server=http.createServer(async(req,res)=>{
     let pathname = decodeURIComponent(url.pathname);
     
     if (pathname === '/') pathname = '/index.html';
+    if (pathname === '/favicon.ico') {
+      res.writeHead(204, { ...CORS_HEADERS, 'Cache-Control': 'public, max-age=86400' });
+      res.end();
+      return;
+    }
     if (pathname === '/api/room/create') {
       const code = roomCode();
       res.writeHead(200, { ...CORS_HEADERS, 'Content-Type': 'application/json' });
