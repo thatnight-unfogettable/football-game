@@ -500,7 +500,11 @@ function bestAssignment(ids) {
   return result;
 }
 function lineupMetrics(assignment) {
-  const entries = SLOT_ORDER.map(slot => ({slot, p: player(assignment[slot]), fit: roleFit(player(assignment[slot]), slot)}));
+  const entries = SLOT_ORDER.map(slot => {
+    const id = assignment[slot];
+    const p = id ? player(id) : null;
+    return { slot, p, fit: p ? roleFit(p, slot) : 0 };
+  }).filter(x => x.p);
   const lineAverage = line => {
     const rows = entries.filter(x => x.p.position === line);
     if (rows.length === 0) return 0;
@@ -513,7 +517,12 @@ function lineupMetrics(assignment) {
   const roles = {FWD:['LW','ST','RW'], MID:['CM1','CDM','CM2'], DEF:['LB','CB1','CB2','RB']};
   let template = 0;
   Object.values(roles).forEach(slots => {
-    if (slots.every(slot => roleFit(player(assignment[slot]), slot) >= .96)) template += 8/3;
+    const complete = slots.every(slot => {
+      const id = assignment[slot];
+      const p = id ? player(id) : null;
+      return p && roleFit(p, slot) >= .96;
+    });
+    if (complete) template += 8/3;
   });
   const groupScore = (field, thresholds, cap) => {
     const counts = {};
@@ -531,7 +540,7 @@ function lineupMetrics(assignment) {
   const nation = groupScore('country', [[2,3],[3,6],[5,10]], 15);
   const ratings = nonGk.map(x => x.p.rating);
   const leaders = Math.min(6, ratings.filter(r => r >= 85).length * 2);
-  const gap = Math.max(...ratings) - Math.min(...ratings);
+  const gap = ratings.length >= 2 ? Math.max(...ratings) - Math.min(...ratings) : 0;
   const balance = gap <= 8 ? 4 : gap <= 12 ? 3 : gap <= 16 ? 2 : gap <= 20 ? 1 : 0;
   const chemistry = Math.min(100, slotFit + template + club + league + nation + leaders + balance);
   // 综合实力 = (paper + chemistry) / 2
@@ -543,6 +552,14 @@ function lineupMetrics(assignment) {
     lines: { FWD: lineAverage('FWD'), MID: lineAverage('MID'), DEF: lineAverage('DEF'), GK: 90 },
     parts: { slotFit, template, club, league, nation, grade: leaders + balance }
   };
+}
+function currentMetrics(side) {
+  return lineupMetrics(assignToSlots(game.picks[side]));
+}
+function previewChemistryDelta(side, candidateId) {
+  if (game.picks[side].includes(candidateId)) return 0;
+  const preview = lineupMetrics(assignToSlots([...game.picks[side], candidateId]));
+  return Math.round((preview.chemistry - currentMetrics(side).chemistry) * 10) / 10;
 }
 function finalizeLineups() { game.lineup.PLAYER = bestAssignment(game.picks.PLAYER); game.lineup.AI = bestAssignment(game.picks.AI); game.phase = 'lineup'; game.screen = 'lineup'; snapshot('阵容自动排布'); save(); render(); }
 function assignToSlots(picks) {
@@ -592,9 +609,12 @@ function rematch() { const s={...game.settings}; newGame(s); }
 
 function card(id, {disabled=false, selected=false, clickable=true} = {}) {
   const p = player(id);
+  const pickDelta = (game && ['prePick','pick','postPick'].includes(game.subPhase) && currentActor() === 'PLAYER' && !game.picks.PLAYER.includes(id))
+    ? previewChemistryDelta('PLAYER', id)
+    : null;
   const threat = (game?.subPhase === 'ban' && game.picks.PLAYER.length > 1)
     ? `化学预估 +${Math.max(0,Math.round(candidateThreat(id,'PLAYER','pick')-p.rating))}～+${Math.max(2,Math.round(candidateThreat(id,'PLAYER','pick')-p.rating)+3)}`
-    : '';
+    : (pickDelta !== null ? `化学预估 ${pickDelta >= 0 ? '+' : ''}${pickDelta}` : '');
   return `<button class="player-card grade-${p.grade} ${disabled?'disabled':''} ${selected?'selected':''}" data-card="${id}" ${disabled||!clickable?'disabled':''}><span class="card-grade">${p.grade}</span><b class="card-rating">${p.rating}</b><span class="avatar">${esc((p.name||p.englishName).slice(0,1))}</span><strong>${esc(p.name)}</strong><small>${esc(p.englishName||'')}</small><div>${esc(p.club)} · ${esc(p.league)}</div><div>${esc(p.country)} · ${esc(p.detailedPosition||p.position)}</div>${threat?`<em>${threat}</em>`:''}</button>`;
 }
 function roster(side) {
@@ -602,9 +622,10 @@ function roster(side) {
   const total = 10;
   const remaining = Math.max(0, total - (picks.length - 1));
   const assignment = assignToSlots(picks);
+  const metrics = currentMetrics(side);
   const slots = side === 'AI' ? [...SLOT_ORDER].reverse() : SLOT_ORDER;
   const dirClass = side === 'AI' ? 'pitch-reverse' : '';
-  return `<aside class="roster ${side.toLowerCase()}"><h3>${side==='PLAYER'?'你的阵容':'AI阵容'}</h3><div class="roster-score">当前纸面 ${currentPaper(side).toFixed(1)}</div><div class="pitch side-pitch ${dirClass}"><div class="pitch-half pitch-def"></div><div class="pitch-half pitch-mid"></div><div class="pitch-half pitch-att"></div><div class="pitch-center"></div>${slots.map(slot => {
+  return `<aside class="roster ${side.toLowerCase()}"><h3>${side==='PLAYER'?'你的阵容':'AI阵容'}</h3><div class="roster-score">当前纸面 ${currentPaper(side).toFixed(1)} · 化学 ${Math.round(metrics.chemistry)}</div><div class="pitch side-pitch ${dirClass}"><div class="pitch-half pitch-def"></div><div class="pitch-half pitch-mid"></div><div class="pitch-half pitch-att"></div><div class="pitch-center"></div>${slots.map(slot => {
     const pid = assignment[slot];
     if (!pid) return `<div class="pitch-slot slot-${slot.toLowerCase()} slot-empty"><div class="slot-pos">${SLOT_LABELS[slot]}</div><div class="slot-name">空位</div></div>`;
     const p = player(pid);
