@@ -1043,113 +1043,128 @@ function onlineRoom(){
   const m = state.game;
   const you = state.you;
   const players = state.players;
-  
+  const enemySide = you === 'A' ? 'B' : 'A';
+  const roundsTotal = 4;
+  const deadline = state.deadline ? Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000)) : 0;
+  const phaseLabel = m ? (
+    m.phase === 'ORDER' ? '选择本轮先后手' :
+    m.phase === 'PRE_PICK' ? '本轮先选 1 人' :
+    m.phase === 'BAN' ? `禁用阶段 · ${m.banCount || 0}/6` :
+    m.phase === 'POST_PICK' ? '再选' :
+    m.phase === 'PICK' ? '选人' :
+    m.phase === 'ROUND_END' ? '本轮完成' :
+    m.phase === 'LINEUP' ? '确认阵容' :
+    m.phase === 'EVENT' ? '事件卡抽卡' :
+    m.phase === 'MATCH' ? '比赛进行中' :
+    m.phase === 'RESULT' ? '比赛结束' : '进行中'
+  ) : '';
+  const onlineHeader = `<header class="app-header"><div class="logo">ONLINE<span>XI</span></div><div class="round-meta">房间 ${room.code}${m ? ` · 第 ${Math.min(m.round + 1, roundsTotal)} / ${roundsTotal} 轮 · ${phaseLabel} <small>${m.roundType === 'double' ? '双选' : '三选'} · ${esc(m.roundHint || '')} · ${deadline}秒</small>` : ''}</div><button data-online-leave>退出</button></header>`;
+
   // 等待好友加入界面
   if(!m) {
     const roomUrl = `${location.origin}${location.pathname}?room=${room.code}`;
     return `<div class="online-wait">
-    <div class="wait-header">
-      <span class="kicker">ROOM ${room.code}</span>
-      <h1>等待好友加入</h1>
-    </div>
-    
-    <div class="room-code-display">
-      <div class="room-code-label">房间码</div>
-      <div class="room-code-number">${room.code.split('').join(' ')}</div>
-    </div>
-    
-    <div class="invite-section">
-      <p class="invite-tip">复制以下链接发送给好友，好友可直接加入：</p>
-      <div class="invite-link-box">
-        <input readonly value="${esc(roomUrl)}" id="invite-link">
-        <button class="primary" data-copy-link>复制链接</button>
-      </div>
-    </div>
-    
-    <div class="players-status">
-      <div class="player-status ${players.A?.connected ? 'connected' : 'waiting'}">
-        <span class="status-dot"></span>
-        <span class="player-name">${esc(players.A?.nickname || '房主')}</span>
-        <span class="player-role">房主${you === 'A' ? ' · 你' : ''}</span>
-      </div>
-      ${players.B ? `
-        <div class="player-status ${players.B.connected ? 'connected' : 'waiting'}">
-          <span class="status-dot"></span>
-          <span class="player-name">${esc(players.B.nickname)}</span>
-          <span class="player-role">访客</span>
+      <div class="wait-header"><span class="kicker">ROOM ${room.code}</span><h1>等待好友加入</h1></div>
+      <div class="room-code-display"><div class="room-code-label">房间码</div><div class="room-code-number">${room.code.split('').join(' ')}</div></div>
+      <div class="invite-section">
+        <p class="invite-tip">复制以下链接发送给好友，好友可直接加入：</p>
+        <div class="invite-link-box">
+          <input readonly value="${esc(roomUrl)}" id="invite-link">
+          <button class="primary" data-copy-link>复制链接</button>
         </div>
-      ` : `
-        <div class="player-status waiting">
-          <span class="status-dot blink"></span>
-          <span class="player-name">等待加入...</span>
+      </div>
+      <div class="players-status">
+        <div class="player-status ${players.A?.connected ? 'connected' : 'waiting'}">
+          <span class="status-dot"></span><span class="player-name">${esc(players.A?.nickname || '房主')}</span>
+          <span class="player-role">房主${you === 'A' ? ' · 你' : ''}</span>
         </div>
-      `}
-    </div>
-    
-    <div class="wait-actions">
-      ${players.B ? '<p class="opponent-joined">好友已加入！即将开始...</p>' : ''}
-      <button data-online-leave>离开房间</button>
-    </div>
-  </div>`;
+        ${players.B ? `<div class="player-status ${players.B.connected ? 'connected' : 'waiting'}"><span class="status-dot"></span><span class="player-name">${esc(players.B.nickname)}</span><span class="player-role">访客</span></div>` : `<div class="player-status waiting"><span class="status-dot blink"></span><span class="player-name">等待加入...</span></div>`}
+      </div>
+      <div class="wait-actions">${players.B ? '<p class="opponent-joined">好友已加入！即将开始...</p>' : ''}<button data-online-leave>离开房间</button></div>
+    </div>`;
   }
-  
-  const availableIds = (() => {
-    const removed = new Set([
-      ...(m.roundBans || []).map(item => item.id),
-      ...(m.prePicks || []),
-      ...(m.postPicks || []),
-    ]);
-    return (m.candidates || []).filter(id => !removed.has(id));
-  })();
-  
-  const cards = (m.candidates || []).map(id => onlineCard(id,{disabled:!availableIds.includes(id),selected:selectedId===id,clickable:m.activeSide===you,ownIds:m.picks[you]||[]})).join('');
-  
-  const deadline = state.deadline ? Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000)) : 0;
-  const activeSide = m.phase === 'ORDER' ? state.choiceOwner : m.activeSide;
-  const isYourTurn = activeSide === you;
-  const pickPhase = ['PRE_PICK','POST_PICK','PICK'].includes(m.phase);
-  const phaseLabel = m.phase === 'ORDER' ? '选择本轮先后手' : m.phase === 'PRE_PICK' ? '先选1人' : m.phase === 'BAN' ? `第${m.banCount+1}/6次禁用` : m.phase === 'POST_PICK' ? '再选1人' : m.phase === 'PICK' ? '双方各选1人' : m.phase === 'ROUND_END' ? '本轮完成' : m.phase === 'LINEUP' ? '确认阵容' : m.phase === 'RESULT' ? '比赛结束' : '进行中';
-  
-  const enemySide = you==='A'?'B':'A';
-  const rosterOnline = (side,reverse=false) => onlineRoster(side,{...m,viewer:you},players,reverse);
-  const roundPickIds = side => [...(m.prePicks||[]),...(m.postPicks||[])].filter(id=>(m.pickOwners||{})[id]===side);
-  const onlineHeader = `<header class="app-header"><div class="logo">好友<span>对战</span></div><div class="round-meta">房间 ${room.code} · 第 ${Math.min(m.round+1,6)} / 6 轮<small>${m.roundType==='double'?'双选':'单选'} · 推荐${esc(m.roundHint||'')} · ${deadline}秒</small></div><button data-online-leave>退出</button></header>`;
 
-  if(m.phase==='LINEUP') return `<div class="game">${onlineHeader}<main class="lineup-page"><div class="section-title"><div><span class="kicker">最终阵容</span><h1>两军对垒 · 4-3-3</h1><p>双方阵容已自动排出最优布局。纸面实力与化学反应共同决定比赛结果。</p></div><button class="primary" data-online-lineup-ready>确认阵容并开始三局两胜</button></div><div class="lineup-compare"><section class="lineup-side lineup-player"><header><h2>${esc(players.A?.nickname||'玩家A')}阵容</h2></header>${onlinePitch(m.picks.A||[],false)}${onlineMetricPanel(m.picks.A||[])}</section><section class="lineup-side lineup-ai"><header><h2>${esc(players.B?.nickname||'玩家B')}阵容</h2></header>${onlinePitch(m.picks.B||[],true)}${onlineMetricPanel(m.picks.B||[])}</section></div></main></div>`;
-  if(m.phase==='RESULT') {const winsA=(m.matches||[]).filter(match=>match.playerGoals>match.aiGoals).length,winsB=(m.matches||[]).length-winsA;return `<div class="game result-page">${onlineHeader}<main><span class="kicker">三局两胜</span><h1>${m.winner===you?'你赢得了对局':`${esc(players[m.winner]?.nickname||'对手')}赢得了对局`}</h1><div class="series-score"><b>${winsA}</b><span>:</span><b>${winsB}</b></div><div class="matches">${(m.matches||[]).map((match,i)=>`<article><small>第${i+1}场 · ${i===0?'玩家A主场':i===1?'玩家B主场':'中立场'}</small><strong>${match.playerGoals} : ${match.aiGoals}</strong></article>`).join('')}</div><div class="result-metrics">${onlineMetricPanel(m.picks.A||[])}${onlineMetricPanel(m.picks.B||[])}</div><div class="menu-actions"><button class="primary" data-online-rematch>再来一局</button><button data-online-leave>返回主菜单</button></div></main></div>`;}
-  if(m.phase==='ROUND_END'){const mine=roundPickIds(you),enemy=roundPickIds(you==='A'?'B':'A');return `<div class="game">${onlineHeader}<main class="round-summary"><span class="kicker">本轮完成</span><h1>第${m.round+1}轮选人完成${m.roundType==='double'?'（双选）':'（单选）'}</h1><div class="duel-picks"><article><h3>你的选择</h3>${mine.map(id=>onlineCard(id,{clickable:false})).join('')}</article><b>VS</b><article><h3>对手选择</h3>${enemy.map(id=>onlineCard(id,{clickable:false})).join('')}</article></div><div class="summary-stats"><span>你的纸面 ${onlinePaper(m.picks[you]||[]).toFixed(1)}</span><span>对手纸面 ${onlinePaper(m.picks[you==='A'?'B':'A']||[]).toFixed(1)}</span><span>下一轮 ${m.round<5?POSITION_NAME[m.rounds[m.round+1].category]:'阵容排布'}</span></div><button class="primary" data-online-next>确认并继续</button><p>双方确认后进入下一轮</p></main></div>`;}
-  
-  return `<div class="game">
-    <header class="app-header">
-      <div class="logo">ONLINE<span>XI</span></div>
-      <div class="round-meta">房间 ${room.code} · 第${Math.min(m.round+1,6)} / 6轮<small>${m.roundType==='double'?'16人双选':'12人单选'} · ${esc(m.roundHint||'')} · ${deadline}秒</small></div>
-      <button data-online-leave>退出</button>
-    </header>
-    <div class="online-status">
-      <span class="${players.A?.connected?'connected':'disconnected'}">${players.A?.nickname || '玩家A'} · ${players.A?.connected?'在线':'掉线'}</span>
-      <span class="${players.B?.connected?'connected':'disconnected'}">${players.B?.nickname || '玩家B'} · ${players.B?.connected?'在线':'掉线'}</span>
-    </div>
-    <div class="bp-layout">
-      ${rosterOnline(you,false)}
-      <main class="board">
-        <div class="turn-banner ${isYourTurn?'player':'ai'}">
-          <b>${isYourTurn?'你的回合':'等待对方'}</b>
-          <span>${phaseLabel}</span>
-        </div>
-        ${m.phase==='ORDER'&&isYourTurn?`<div class="choice-grid online-choice">
-          <button data-online-order="first">我先选</button>
-          <button class="accent" data-online-order="last">我后选</button>
-        </div>`:''}
-        <section class="ban-panel"><div class="ban-row"><b>你方禁用</b>${(m.roundBans||[]).filter(item=>item.side===you).map((item,i)=>{const p=onlinePlayer(item.id);return `<div class="ban-item"><span class="ban-idx">${i+1}</span><div class="ban-info"><b>${esc(p.name)}</b><small>${esc(p.club)} · ${esc(p.country)}</small></div><span class="ban-rating">${p.rating}</span></div>`;}).join('')||'<span class="ban-empty">暂无</span>'}</div><div class="ban-row"><b>对手禁用</b>${(m.roundBans||[]).filter(item=>item.side!==you).map((item,i)=>{const p=onlinePlayer(item.id);return `<div class="ban-item"><span class="ban-idx">${i+1}</span><div class="ban-info"><b>${esc(p.name)}</b><small>${esc(p.club)} · ${esc(p.country)}</small></div><span class="ban-rating">${p.rating}</span></div>`;}).join('')||'<span class="ban-empty">暂无</span>'}</div></section>
-        <div class="candidate-grid">${cards}</div>
-        ${(m.phase==='BAN'||pickPhase)&&isYourTurn?`<footer>
-          <span>${selectedId ? esc(nameZh(onlinePlayer(selectedId))) : '请选择球员'}</span>
-          <button class="primary" data-online-confirm ${!selectedId?'disabled':''}>确认${m.phase==='BAN'?'禁用':'选择'}</button>
-        </footer>`:''}
-      </main>
-      ${rosterOnline(enemySide,true)}
-    </div>
-  </div>`;
+  // RESULT：BO3 最终结果
+  if (m.phase === 'RESULT') {
+    const r = m.result || {};
+    const winner = r.winner;
+    const winLine = winner === you ? '你赢得了对局' : winner ? `${esc(players[winner]?.nickname || '对手')}赢得了对局` : (r.forfeit ? `${esc(players[r.forfeit.loser]?.nickname||'')}断线超时，${esc(players[r.forfeit.winner]?.nickname||'')}获胜` : '对局结束');
+    const aWin = r.aWins ?? 0;
+    const bWin = r.bWins ?? 0;
+    const myWin = winner === you;
+    return `<div class="game result-page">${onlineHeader}<main><span class="kicker">BEST OF THREE</span><h1>${esc(winLine)}</h1><div class="series-score"><b>${aWin}</b><span>:</span><b>${bWin}</b></div><div class="matches">${(r.matches || []).map((mt, i) => {
+      const ac = EVENT_BY_ID[mt.events?.A], bc = EVENT_BY_ID[mt.events?.B];
+      return `<article><small>第${i + 1}场 · ${esc(mt.venue || '')}${mt.forfeit ? ' · 腰斩' : ''}</small><strong>${mt.ag} : ${mt.bg}</strong>${mt.events ? `<em>${ac?.emoji || '⚽'} vs ${bc?.emoji || '⚽'}</em>` : ''}</article>`;
+    }).join('')}</div><div class="result-metrics">${onlineMetricPanel(m.picks.A || [])}${onlineMetricPanel(m.picks.B || [])}</div><div class="mvp">${r.mvpId ? `本局MVP <strong>${esc(nameZh(onlinePlayer(r.mvpId)))}</strong>` : ''}</div><div class="menu-actions"><button class="primary" data-online-rematch>再来一局</button><button data-online-leave>返回主菜单</button></div></main></div>`;
+  }
+
+  // LINEUP：双方阵容对比
+  if (m.phase === 'LINEUP') {
+    const youReady = players[you]?.lineupReady;
+    return `<div class="game">${onlineHeader}<main class="lineup-page"><div class="section-title"><div><span class="kicker">最终阵容</span><h1>两军对垒 · 4-3-3</h1><p>双方阵容已自动排出最优布局。三局两胜，每场双方各抽 1 张随机事件卡。</p></div><button class="primary" data-online-lineup-ready ${youReady ? 'disabled' : ''}>${youReady ? '已确认 · 等待对手' : '确认阵容并开始抽事件卡'}</button></div><div class="lineup-compare"><section class="lineup-side lineup-player"><header><h2>${esc(players.A?.nickname || '玩家A')}阵容</h2><span class="side-score">综合 ${onlineMetrics(m.picks.A || []).overall.toFixed(1)}</span></header>${onlinePitch(m.picks.A || [], false)}${onlineMetricPanel(m.picks.A || [])}</section><section class="lineup-side lineup-ai"><header><h2>${esc(players.B?.nickname || '玩家B')}阵容</h2><span class="side-score">综合 ${onlineMetrics(m.picks.B || []).overall.toFixed(1)}</span></header>${onlinePitch(m.picks.B || [], true)}${onlineMetricPanel(m.picks.B || [])}</section></div></main></div>`;
+  }
+
+  // EVENT：BO3 事件卡抽卡
+  if (m.phase === 'EVENT') {
+    const s = m.series;
+    const myDraw = you === 'A' ? s.aDraw : s.bDraw;
+    const enemyDraw = you === 'A' ? s.bDraw : s.aDraw;
+    const myChoice = you === 'A' ? s.aChoice : s.bChoice;
+    const enemyChoice = you === 'A' ? s.bChoice : s.aChoice;
+    const faceUp = s.stage === 'reveal';
+    const venue = s.matchIndex === 0 ? 'A 主场' : s.matchIndex === 1 ? 'B 主场' : '中立场';
+    const card = (id, opts = {}) => {
+      const c = EVENT_BY_ID[id];
+      if (!c) return '';
+      const cls = `event-card ${c.type}${opts.chosen ? ' chosen' : ''}${opts.faceDown ? ' face-down' : ''}`;
+      return `<button class="${cls}" data-online-event-card="${id}" ${opts.clickable ? '' : 'disabled'}><span class="ec-emoji">${c.emoji}</span><b>${c.name}</b><small>${EVENT_TYPE_NAME[c.type]}</small><p>${c.desc}</p></button>`;
+    };
+    const yourCards = (myDraw || []).map(id => card(id, { chosen: myChoice === id, clickable: s.stage === 'draw' })).join('');
+    const aiCards = (enemyDraw || []).map(id => card(id, { faceDown: !(faceUp && enemyChoice === id), chosen: enemyChoice === id })).join('');
+    const title = s.stage === 'draw' ? '抽一张事件卡' : '双方事件揭晓';
+    const hint = s.stage === 'draw' ? '从三张卡中选一张，将在本场比赛生效。' : 'AI 也做出了选择。开球看看会发生什么！';
+    return `<div class="game">${onlineHeader}<main class="event-page"><span class="kicker">EVENT DRAW · MATCH ${s.matchIndex + 1} · ${esc(venue)}</span><h1>${title}</h1><p>${hint}</p><section class="event-row"><h3>你的手牌</h3><div class="event-cards">${yourCards}</div></section><section class="event-row"><h3>对手的手牌</h3><div class="event-cards">${aiCards}</div></section>${faceUp ? `<button class="primary" data-online-play-match>开球 · 第${s.matchIndex + 1}场</button>` : ''}</main></div>`;
+  }
+
+  // MATCH：单场比赛结果
+  if (m.phase === 'MATCH') {
+    const s = m.series;
+    const mt = s.matches[s.matches.length - 1];
+    const ac = EVENT_BY_ID[mt.events?.A], bc = EVENT_BY_ID[mt.events?.B];
+    const finished = (s.aWins >= 2 || s.bWins >= 2 || s.matches.length >= 3);
+    return `<div class="game">${onlineHeader}<main class="match-page"><span class="kicker">MATCH ${s.matches.length} · ${esc(mt.venue || '')}${mt.forfeit ? ' · 腰斩' : ''}</span><h1>${mt.forfeit ? '比赛腰斩！' : `${mt.ag} : ${mt.bg}`}</h1>${mt.forfeit ? '<p class="event-pending">球迷冲入场内，比赛腰斩，随机一方被判 0-3 负。</p>' : ''}<div class="match-events"><span>${esc(players.A?.nickname || 'A')} ${ac?.emoji || '⚽'} ${ac?.name || ''}</span><b>VS</b><span>${esc(players.B?.nickname || 'B')} ${bc?.emoji || '⚽'} ${bc?.name || ''}</span></div><div class="series-track">大比分 ${s.aWins} : ${s.bWins}</div><button class="primary" data-online-next-match>${finished ? '查看最终结果' : '下一场 · 抽事件卡'}</button></main></div>`;
+  }
+
+  // ROUND_END：双方都点继续
+  if (m.phase === 'ROUND_END') {
+    const myReady = state.continueReady?.[you];
+    const enemyReady = state.continueReady?.[enemySide];
+    const roundPickIds = side => [...(m.prePicks || []), ...(m.postPicks || [])].filter(id => (m.pickOwners || {})[id] === side);
+    const mine = roundPickIds(you);
+    const enemy = roundPickIds(enemySide);
+    const isMixed = m.rounds[m.round]?.category === 'MIXED';
+    const isDouble = m.rounds[m.round]?.type === 'double';
+    return `<div class="game">${onlineHeader}<main class="round-summary"><span class="kicker">本轮完成</span><h1>第${m.round + 1}轮选人完成${isMixed ? '（全明星）' : isDouble ? '（双选）' : '（三选）'}</h1><div class="duel-picks"><article><h3>你的选择</h3>${mine.map(id => onlineCard(id, { clickable: false })).join('')}</article><b>VS</b><article><h3>对手选择</h3>${enemy.map(id => onlineCard(id, { clickable: false })).join('')}</article></div><div class="summary-stats"><span>你的纸面 ${onlinePaper(m.picks[you] || []).toFixed(1)}</span><span>对手纸面 ${onlinePaper(m.picks[enemySide] || []).toFixed(1)}</span><span>${m.round < roundsTotal - 1 ? `下一轮 ${POSITION_NAME[m.rounds[m.round + 1].category] || ''}` : '阵容排布'}</span></div><button class="primary" data-online-next ${myReady ? 'disabled' : ''}>${myReady ? '已确认 · 等待对手' : (enemyReady ? '确认进入下一轮' : '确认并继续')}</button><p>双方确认后进入下一轮</p></main></div>`;
+  }
+
+  // BP 阶段（ORDER / PRE_PICK / BAN / POST_PICK / PICK）
+  const removed = new Set([
+    ...((m.roundBans || []).map(x => x.id)),
+    ...(m.prePicks || []),
+    ...(m.postPicks || []),
+  ]);
+  const availableIds = (m.candidates || []).filter(id => !removed.has(id));
+  const cards = (m.candidates || []).map(id => onlineCard(id, { disabled: !availableIds.includes(id), selected: selectedId === id, clickable: m.activeSide === you, ownIds: m.picks[you] || [] })).join('');
+
+  const activeSideName = m.phase === 'ORDER' ? state.choiceOwner : m.activeSide;
+  const isYourTurn = activeSideName === you;
+  const pickPhase = m.phase === 'PRE_PICK' || m.phase === 'POST_PICK' || m.phase === 'PICK';
+  const confirmText = m.phase === 'BAN' ? '禁用' : '选择';
+  const actionType = m.phase === 'BAN' ? 'BAN' : (m.phase === 'PRE_PICK' ? 'PRE_PICK' : 'POST_PICK');
+  const rosterOnline = (side, reverse = false) => onlineRoster(side, { ...m, viewer: you }, players, reverse);
+  const roundPickIds = side => [...(m.prePicks || []), ...(m.postPicks || [])].filter(id => (m.pickOwners || {})[id] === side);
+
+  return `<div class="game">${onlineHeader}<div class="bp-layout">${rosterOnline(you, false)}<main class="board"><div class="turn-banner ${isYourTurn ? 'player' : 'ai'}"><b>${isYourTurn ? '你的回合' : '等待对方'}</b><span>${phaseLabel}</span></div>${m.phase === 'ORDER' && isYourTurn ? `<div class="choice-grid online-choice"><button data-online-order="first">我先选</button><button class="accent" data-online-order="last">我后选</button></div>` : ''}<section class="ban-panel"><div class="ban-row"><b>你方禁用</b>${(m.roundBans || []).filter(item => item.side === you).map((item, i) => { const p = onlinePlayer(item.id); return `<div class="ban-item"><span class="ban-idx">${i + 1}</span><div class="ban-info"><b>${esc(p?.name || item.id)}</b><small>${esc(p?.club || '')} · ${esc(p?.country || '')}</small></div><span class="ban-rating">${p?.rating || ''}</span></div>`; }).join('') || '<span class="ban-empty">暂无</span>'}</div><div class="ban-row"><b>对手禁用</b>${(m.roundBans || []).filter(item => item.side !== you).map((item, i) => { const p = onlinePlayer(item.id); return `<div class="ban-item"><span class="ban-idx">${i + 1}</span><div class="ban-info"><b>${esc(p?.name || item.id)}</b><small>${esc(p?.club || '')} · ${esc(p?.country || '')}</small></div><span class="ban-rating">${p?.rating || ''}</span></div>`; }).join('') || '<span class="ban-empty">暂无</span>'}</div></section><div class="candidate-grid">${cards}</div>${(m.phase === 'BAN' || pickPhase) && isYourTurn ? `<footer><span>${selectedId ? esc(nameZh(onlinePlayer(selectedId))) : '请选择球员'}</span><button class="primary" data-online-confirm ${!selectedId ? 'disabled' : ''}>确认${confirmText}</button></footer>` : ''}</main>${rosterOnline(enemySide, true)}</div></div>`;
 }
 function render() {
   clearTimeout(aiTimer);
@@ -1247,10 +1262,16 @@ function bind() {
   document.querySelector('[data-online-confirm]')?.addEventListener('click',()=>{
     if(!selectedId) return;
     const phase = online.state?.game?.phase;
-    onlineSend('ACTION',{action:phase==='BAN'?'BAN':'PICK',playerId:selectedId});
-    selectedId=null;
+    const action = phase === 'BAN' ? 'BAN' : (phase === 'PRE_PICK' ? 'PRE_PICK' : 'POST_PICK');
+    onlineSend('ACTION',{action, playerId: selectedId});
+    selectedId = null;
   });
-  document.querySelector('[data-online-next]')?.addEventListener('click',()=>onlineSend('NEXT'));
+  document.querySelectorAll('[data-online-event-card]').forEach(el => el.onclick = () => {
+    onlineSend('EVENT_CARD', { cardId: el.dataset.onlineEventCard });
+  });
+  document.querySelector('[data-online-play-match]')?.addEventListener('click', () => onlineSend('PLAY_MATCH'));
+  document.querySelector('[data-online-next-match]')?.addEventListener('click', () => onlineSend('NEXT_MATCH'));
+  document.querySelector('[data-online-next]')?.addEventListener('click',()=>onlineSend('CONTINUE'));
   document.querySelector('[data-online-lineup-ready]')?.addEventListener('click',()=>onlineSend('LINEUP_READY'));
   document.querySelector('[data-online-rematch]')?.addEventListener('click',()=>onlineSend('REMATCH'));
   document.querySelectorAll('[data-online-leave]').forEach(el=>el.onclick=()=>{

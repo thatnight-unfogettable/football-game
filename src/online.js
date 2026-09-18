@@ -1,4 +1,4 @@
-const PROTOCOL = 1;
+const PROTOCOL = 3;
 const TOKEN_KEY = 'bp-online-token';
 const ROOM_KEY = 'bp-online-room';
 const NICKNAME_KEY = 'bp-online-nickname';
@@ -74,6 +74,8 @@ export class OnlineClient {
         this.handlers.error?.(message.payload?.message || '未知错误');
       } else if (message.type === 'HISTORY') {
         this.handlers.history?.(message.payload);
+      } else if (message.type === 'PONG') {
+        // ignore
       }
     } catch (e) {
       console.error('[OnlineClient] Parse error:', e);

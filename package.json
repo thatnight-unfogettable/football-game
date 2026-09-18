@@ -17,7 +17,7 @@
     "posters:all": "node posters/generate-pptx.mjs && node posters/export-png.mjs"
   },
   "dependencies": {
-    "ws": "latest"
+    "ws": "^8.21.3"
   },
   "keywords": [
     "football",
