@@ -649,7 +649,7 @@ export function startMatch90(state, rng) {
   state.match = {
     // ── 基础状态 ──
     tickMinute: 0,         // 当前分钟 0-90+
-    phase: 'draw',         // draw → important → fast → important → ... → finish / penalty
+    phase: 'match_draw',   // match_draw → match_important → fast → ... → finished / penalty
     mode: 'fast',          // 'fast' | 'important'
     ag: 0, bg: 0,         // 当前比分
 
@@ -851,7 +851,7 @@ export function advanceToMinute(state, rng, targetMinute) {
   m.bPlayed.push(m.bChoice);
   m.aChoice = null;
   m.bChoice = null;
-  m.phase = 'draw';
+  m.phase = 'match_draw';
 
   // 判定是否结束
   if (m.tickMinute >= 90) {
