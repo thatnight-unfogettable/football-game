@@ -656,7 +656,7 @@ function pickTacticalStyle(styleId) {
 // ─── 出牌（同时出）───
 // phase = 'match_draw' 阶段可出牌
 function playCard(cardId) {
-  if (game.phase !== 'match_draw') return;
+  if (game.phase !== 'match' || game.match?.phase !== 'match_draw') return;
   const m = game.match;
   // 玩家选择这张牌
   m.aChoice = cardId;
@@ -714,7 +714,7 @@ function playCard(cardId) {
 
 // ─── 快进/推进（重要模式结束后自动继续）───
 function advanceMatch() {
-  if (game.phase !== 'match_important') return;
+  if (game.phase !== 'match' || game.match?.phase !== 'match_important') return;
   const m = game.match;
   m.mode = 'fast';
   m.modeStartMin = m.tickMinute;
