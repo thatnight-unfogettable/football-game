@@ -7,12 +7,14 @@ import {
   applyBan,
   applyPostPick,
   advanceRound,
-  startSeries,
-  startMatchDraw,
-  confirmEvent,
-  resolveMatch,
-  finishSeries,
-  aiChoose,
+  startMatch90,
+  drawMatchCards,
+  aiPickMatchCard,
+  setTacticalStyle,
+  advanceToMinute,
+  startPenaltyShootout,
+  finishMatch90,
+  resolveMatch90,
   activeSide,
   availableIds,
   createRng,
@@ -21,6 +23,7 @@ import {
   COURTOIS,
   BANS_PER_ROUND,
   EVENT_BY_ID,
+  STYLE_BY_ID,
 } from '../src/engine.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
@@ -127,12 +130,23 @@ function onTimeout(room) {
   } else if (g.phase === 'POST_PICK' || g.phase === 'PICK') {
     const id = chooseAuto(room, side, 'pick');
     if (id) handlePostPick(room, side, id, true);
-  } else if (g.phase === 'EVENT') {
-    // 事件卡：超时自动按 aiChoose 选
-    const s = g.series;
-    const draw = side === 'A' ? s.aDraw : s.bDraw;
-    const id = draw[Math.floor(Math.random() * draw.length)];
-    handleEventCard(room, side, id, true);
+  } else if (g.phase === 'match' || g.phase === 'match_draw') {
+    // 比赛出牌：超时自动 AI 选
+    const m = g.match;
+    const hand = side === 'A' ? m.aDraw.filter(id => !m.aPlayed.includes(id)) : m.bDraw.filter(id => !m.bPlayed.includes(id));
+    if (!hand.length) {
+      // 没手牌就快进
+      handleFastForward(room, side);
+    } else {
+      const cardId = aiPickMatchCard(room.rng, hand);
+      handlePlayCard(room, side, cardId);
+    }
+  } else if (g.phase === 'tactical_pick') {
+    // 战术超时：AI 自动选 longball
+    const my = side === 'A' ? 'B' : 'A';
+    if (!g.match) g.match = {};
+    if (side === 'A' && !g.match.aStyle) handleSetStyle(room, 'A', 'longball');
+    else if (side === 'B' && !g.match.bStyle) handleSetStyle(room, 'B', 'longball');
   }
 }
 
@@ -260,58 +274,164 @@ export function handleLineupReady(room, side) {
 }
 
 function finishLineupIfReady(room) {
-  // 进入 BO3 第一场事件卡
+  // 阵容阶段完成 → 进入战术选择
   room.continueReady.A = false;
   room.continueReady.B = false;
-  startSeries(room.game, room.rng);
+  room.game.phase = 'tactical_pick';
+  room.game.match = { aStyle: null, bStyle: null, aDraw: [], bDraw: [] };
+  room.pending = 'TACTICAL_PICK';
   setDeadline(room, 60_000, () => onTimeout(room));
 }
 
-export function handleEventCard(room, side, cardId, auto = false) {
-  const r = confirmEvent(room.game, side, cardId);
-  if (!r.ok) return r;
-  const s = room.game.series;
-  if (s.aChoice && s.bChoice) {
-    s.stage = 'reveal';
-  }
-  clearDeadline(room);
-  setDeadline(room, 60_000, () => onTimeout(room));
-  return { ok: true };
-}
-
-export function handlePlayMatch(room, side) {
-  const s = room.game.series;
-  if (!s || s.stage !== 'reveal') return { ok: false, error: '双方尚未选完卡' };
-  s.playedBy = s.playedBy || new Set();
-  s.playedBy.add(side);
-  if (s.playedBy.size < 2) return { ok: true };
-  const r = resolveMatch(room.game, room.rng);
-  if (!r.ok) return r;
-  clearDeadline(room);
-  setDeadline(room, 60_000, () => onTimeout(room));
-  return { ok: true };
-}
-
-export function handleNextMatch(room, side) {
-  const s = room.game.series;
-  if (!s || room.game.phase !== 'MATCH') return { ok: false, error: '当前没有已结束的比赛' };
-  // 双方都按了再进下一场
-  s.matchReady = s.matchReady || new Set();
-  s.matchReady.add(side);
-  if (s.matchReady.size < 2) return { ok: true };
-  s.matchReady = new Set();
-  // 三局两胜结束
-  if (s.aWins >= 2 || s.bWins >= 2 || s.matches.length >= 3) {
-    finishSeries(room.game);
-    room.status = 'finished';
-    room.finishedAt = Date.now();
-    room.history.push({ type: 'RESULT', winner: room.game.result.winner, at: Date.now() });
+// 玩家选择战术风格
+export function handleSetStyle(room, side, styleId) {
+  if (!STYLE_BY_ID[styleId]) return { ok: false, error: '未知战术风格' };
+  setTacticalStyle(room.game, side, styleId);
+  room.history.push({ type: 'SET_STYLE', side, styleId, at: Date.now() });
+  // 检查双方是否都选了
+  const m = room.game.match;
+  if (m.aStyle && m.bStyle && room.game.phase === 'tactical_pick') {
+    // 初始化 90 分钟比赛
+    startMatch90(room.game, room.rng);
+    room.game.phase = 'match';
+    room.game.match.phase = 'match_draw';
+    room.pending = 'MATCH_DRAW';
     clearDeadline(room);
-    return { ok: true };
+    setDeadline(room, 60_000, () => onTimeout(room));
   }
-  s.matchIndex++;
-  startMatchDraw(room.game, room.rng);
+  return { ok: true };
+}
+
+// 玩家出牌（同时出）
+export function handlePlayCard(room, side, cardId) {
+  const m = room.game.match;
+  if (!m || m.phase !== 'match_draw') return { ok: false, error: '当前不在出牌阶段' };
+  const hand = side === 'A' ? m.aDraw : m.bDraw;
+  if (cardId && !hand.includes(cardId)) return { ok: false, error: '不在手牌中' };
+  // 如果玩家没手牌可打，cardId 为 null
+  if (side === 'A') m.aChoice = cardId;
+  else m.bChoice = cardId;
+  room.history.push({ type: 'PLAY_CARD', side, cardId, at: Date.now() });
+
+  // 检查双方都选了
+  if (m.aChoice !== null && m.bChoice !== null) {
+    // 即时牌推进，修正牌加入 pending
+    [m.aChoice, m.bChoice].forEach((id, i) => {
+      const s = i === 0 ? 'A' : 'B';
+      if (!id) return;
+      const card = EVENT_BY_ID[id];
+      if (card?.type === 'instant') {
+        const targetMin = Math.min(card.minuteEnd || card.minute, 90);
+        advanceToMinute(room.game, room.rng, targetMin);
+      } else if (card?.type === 'modifier') {
+        (s === 'A' ? m.aPending : m.bPending).push(card);
+      }
+    });
+    m.mode = 'important';
+    m.modeStartMin = m.tickMinute;
+    [m.aChoice, m.bChoice].forEach((id, i) => {
+      const s = i === 0 ? 'A' : 'B';
+      if (!id) return;
+      const card = EVENT_BY_ID[id];
+      if (card) m.importantEvents.push({ tick: m.tickMinute, type: 'instant', text: card.narrate || card.name, side: s, cardId: id });
+    });
+    m.aPlayed.push(m.aChoice);
+    m.bPlayed.push(m.bChoice);
+    m.aChoice = null;
+    m.bChoice = null;
+    m.phase = 'match_draw';
+
+    if (m.tickMinute >= 90) {
+      advanceToMinute(room.game, room.rng, 90);
+      finishMatch90(room.game);
+      if (room.game.phase === 'penalty') {
+        startPenaltyShootout(room.game, room.rng);
+        room.game.phase = 'penalty';
+      } else {
+        resolveMatch90(room.game);
+        room.game.phase = 'result';
+        room.status = 'finished';
+        room.finishedAt = Date.now();
+      }
+    } else {
+      room.pending = 'MATCH_DRAW';
+    }
+    clearDeadline(room);
+    setDeadline(room, 60_000, () => onTimeout(room));
+  }
+  return { ok: true };
+}
+
+// 快进 5 分钟（跳过出牌，双方都按了才推进）
+export function handleFastForward(room, side) {
+  const m = room.game.match;
+  if (!m || m.phase !== 'match_draw') return { ok: false, error: '当前不在出牌阶段' };
+  // 单边按一次算快进
+  advanceToMinute(room.game, room.rng, Math.min(m.tickMinute + 5, 90));
+  m.tickMinute = Math.min(m.tickMinute + 5, 90);
+  m.mode = 'fast';
+  m.modeStartMin = m.tickMinute;
+
+  if (m.tickMinute >= 90) {
+    advanceToMinute(room.game, room.rng, 90);
+    finishMatch90(room.game);
+    if (room.game.phase === 'penalty') {
+      startPenaltyShootout(room.game, room.rng);
+      room.game.phase = 'penalty';
+    } else {
+      resolveMatch90(room.game);
+      room.game.phase = 'result';
+      room.status = 'finished';
+      room.finishedAt = Date.now();
+    }
+  }
+  clearDeadline(room);
   setDeadline(room, 60_000, () => onTimeout(room));
+  return { ok: true };
+}
+
+// 继续（重要模式后）
+export function handleMatchContinue(room, side) {
+  // 切到快进模式，5 分钟
+  const m = room.game.match;
+  if (!m) return { ok: false, error: '比赛未开始' };
+  // 双方都按了才切
+  if (!m.continueAck) m.continueAck = { A: false, B: false };
+  m.continueAck[side] = true;
+  if (m.continueAck.A && m.continueAck.B) {
+    m.continueAck = { A: false, B: false };
+    advanceToMinute(room.game, room.rng, Math.min(m.tickMinute + 5, 90));
+    m.tickMinute = Math.min(m.tickMinute + 5, 90);
+    m.mode = 'fast';
+    m.modeStartMin = m.tickMinute;
+    if (m.tickMinute >= 90) {
+      advanceToMinute(room.game, room.rng, 90);
+      finishMatch90(room.game);
+      if (room.game.phase === 'penalty') {
+        startPenaltyShootout(room.game, room.rng);
+        room.game.phase = 'penalty';
+      } else {
+        resolveMatch90(room.game);
+        room.game.phase = 'result';
+        room.status = 'finished';
+        room.finishedAt = Date.now();
+      }
+    }
+    clearDeadline(room);
+    setDeadline(room, 60_000, () => onTimeout(room));
+  }
+  return { ok: true };
+}
+
+// 点球大战后的查看结果
+export function handlePenaltyReady(room, side) {
+  const m = room.game.match;
+  if (!m || !m.penalty) return { ok: false, error: '当前不在点球阶段' };
+  resolveMatch90(room.game);
+  room.game.phase = 'result';
+  room.status = 'finished';
+  room.finishedAt = Date.now();
+  clearDeadline(room);
   return { ok: true };
 }
 
@@ -335,9 +455,9 @@ export function handleForfeit(room, side, reason = '主动认输') {
   // 构造一个 result，方便前端展示
   room.game.result = {
     winner: opponent(side),
-    aWins: side === 'A' ? 0 : (room.game.series?.aWins ?? 0),
-    bWins: side === 'B' ? 0 : (room.game.series?.bWins ?? 0),
-    matches: room.game.series?.matches || [],
+    ag: room.game.match?.ag ?? 0,
+    bg: room.game.match?.bg ?? 0,
+    penalty: room.game.match?.penalty || null,
     metrics: {
       A: room.game.lineup.A ? lineupMetrics(room.game.lineup.A, room.game.players) : null,
       B: room.game.lineup.B ? lineupMetrics(room.game.lineup.B, room.game.players) : null,

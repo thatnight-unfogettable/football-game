@@ -26,9 +26,11 @@ import {
   handleContinue,
   handleSwap,
   handleLineupReady,
-  handleEventCard,
-  handlePlayMatch,
-  handleNextMatch,
+  handleSetStyle,
+  handlePlayCard,
+  handleFastForward,
+  handleMatchContinue,
+  handlePenaltyReady,
   handleRematch,
   handleForfeit,
   handleChat,
@@ -230,9 +232,11 @@ function handleMessage(ws, msg) {
     case 'CONTINUE': return doContinue(ws);
     case 'SWAP':     return doSwap(ws, p);
     case 'LINEUP_READY': return doLineupReady(ws);
-    case 'EVENT_CARD':   return doEventCard(ws, p);
-    case 'PLAY_MATCH':   return doPlayMatch(ws);
-    case 'NEXT_MATCH':   return doNextMatch(ws);
+    case 'SET_STYLE':    return doSetStyle(ws, p);
+    case 'PLAY_CARD':    return doPlayCard(ws, p);
+    case 'FAST_FORWARD': return doFastForward(ws, p);
+    case 'MATCH_CONTINUE': return doMatchContinue(ws, p);
+    case 'PENALTY_READY': return doPenaltyReady(ws, p);
     case 'REMATCH':      return doRematch(ws);
     case 'FORFEIT':      return doForfeit(ws);
     case 'CHAT':         return doChat(ws, p);
@@ -339,34 +343,50 @@ function doLineupReady(ws) {
   broadcast(room, 'STATE');
 }
 
-function doEventCard(ws, p) {
-  const room = roomOf(ws);
-  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
-  const r = handleEventCard(room, ws.side, p.cardId);
-  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
-  broadcast(room, 'STATE');
-}
-
-function doPlayMatch(ws) {
-  const room = roomOf(ws);
-  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
-  const r = handlePlayMatch(room, ws.side);
-  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
-  broadcast(room, 'STATE');
-}
-
-function doNextMatch(ws) {
-  const room = roomOf(ws);
-  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
-  const r = handleNextMatch(room, ws.side);
-  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
-  broadcast(room, 'STATE');
-}
-
 function doRematch(ws) {
   const room = roomOf(ws);
   if (!room || room.status !== 'finished') return send(ws, 'ERROR', { message: '对局未结束' });
   handleRematch(room, ws.side);
+  broadcast(room, 'STATE');
+}
+
+function doSetStyle(ws, p) {
+  const room = roomOf(ws);
+  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
+  const r = handleSetStyle(room, ws.side, p.styleId);
+  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
+  broadcast(room, 'STATE');
+}
+
+function doPlayCard(ws, p) {
+  const room = roomOf(ws);
+  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
+  const r = handlePlayCard(room, ws.side, p.cardId);
+  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
+  broadcast(room, 'STATE');
+}
+
+function doFastForward(ws, p) {
+  const room = roomOf(ws);
+  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
+  const r = handleFastForward(room, ws.side);
+  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
+  broadcast(room, 'STATE');
+}
+
+function doMatchContinue(ws) {
+  const room = roomOf(ws);
+  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
+  const r = handleMatchContinue(room, ws.side);
+  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
+  broadcast(room, 'STATE');
+}
+
+function doPenaltyReady(ws) {
+  const room = roomOf(ws);
+  if (!room || !room.game) return send(ws, 'ERROR', { message: '尚未开始对局' });
+  const r = handlePenaltyReady(room, ws.side);
+  if (!r.ok) return send(ws, 'ERROR', { message: r.error });
   broadcast(room, 'STATE');
 }
 

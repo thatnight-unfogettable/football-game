@@ -2,11 +2,29 @@ import { PLAYER_DATA } from '../data/players.js';
 import { OnlineClient } from './online.js';
 import { COUNTRY_ZH, CLUB_ZH, LEAGUE_ZH } from '../data/i18n.js';
 import { NAME_ZH, NAME_ZH_EXTRA } from '../data/names-zh.js';
+// 从 engine.js 导入 v4 90分钟模式数据
+import {
+  MATCH_CARDS,
+  EVENT_BY_ID,
+  EVENT_TYPE_NAME,
+  TACTICAL_STYLES,
+  STYLE_BY_ID,
+  startMatch90,
+  drawMatchCards,
+  aiPickMatchCard,
+  setTacticalStyle,
+  stylePhaseBonus,
+  advanceToMinute,
+  startPenaltyShootout,
+  finishMatch90,
+  resolveMatch90,
+  getMatchSnapshot,
+} from './engine.js';
 
 const app = document.querySelector('#app');
 const ACTIVE_KEY = 'football-bp-active-v1';
 const HISTORY_KEY = 'football-bp-history-v1';
-const RULE_VERSION = 3;
+const RULE_VERSION = 4;
 const BANS_PER_ROUND = 3;
 // 4轮规则：前2轮双选16人，第3轮三选后卫14人，第4轮全明星混合三选14人（各位置1人）
 // 轮次结构：type='double'(各选2人) 或 'triple'(各选3人)，category='MIXED'为全明星混合轮
@@ -19,37 +37,8 @@ const ROUND_PLAN = [
 const SLOT_ORDER = ['LW', 'ST', 'RW', 'CM1', 'CDM', 'CM2', 'LB', 'CB1', 'CB2', 'RB', 'GK'];
 const SLOT_LABELS = { LW: '左边锋', ST: '中锋', RW: '右边锋', CM1: '中前卫', CDM: '后腰', CM2: '中前卫', LB: '左后卫', CB1: '中卫', CB2: '中卫', RB: '右后卫', GK: '门将' };
 const POSITION_NAME = { FWD: '前锋', MID: '中场', DEF: '后卫', GK: '门将', MIXED: '全明星' };
-// BO3随机事件卡（26张）：比分8 / 数值10 / 跨场3 / 彩蛋5。effect为持有方视角。
-const EVENT_CARDS = [
-  { id:'penalty', name:'点球机会', emoji:'🎯', type:'score', weight:1, desc:'禁区内手球！你获得点球并稳稳罚进', goals:1 },
-  { id:'wondergoal', name:'世界波', emoji:'🌠', type:'score', weight:1, desc:'中场吊射世界波，本场+1球', goals:1 },
-  { id:'counter', name:'闪电反击', emoji:'⚡', type:'score', weight:1, desc:'快速反击一击致命，本场+1球', goals:1 },
-  { id:'stoppage', name:'补时绝杀', emoji:'⏱️', type:'score', weight:1, desc:'补时读秒绝杀，本场+1球', goals:1 },
-  { id:'redcard', name:'对手红牌', emoji:'🟥', type:'score', weight:1, desc:'对方核心染红，他们本场-1球', oppGoals:-1 },
-  { id:'owngoal', name:'对手乌龙', emoji:'🙈', type:'score', weight:1, desc:'对方后卫自摆乌龙，他们本场-1球', oppGoals:-1 },
-  { id:'var', name:'VAR改判', emoji:'📺', type:'score', weight:1, desc:'VAR取消对方进球，他们本场-1球', oppGoals:-1 },
-  { id:'butterfingers', name:'门将黄油手', emoji:'🧤', type:'score', weight:1, desc:'对方门将脱手送礼，他们本场-1球', oppGoals:-1 },
-  { id:'onfire', name:'状态火热', emoji:'🔥', type:'stat', weight:1, desc:'全队状态爆棚，本场化学+15', selfChem:15 },
-  { id:'lockerroom', name:'更衣室风波', emoji:'💥', type:'stat', weight:1, desc:'对方更衣室内讧，本场化学-15', oppChem:-15 },
-  { id:'mastermind', name:'战术大师', emoji:'📋', type:'stat', weight:1, desc:'针对性战术奏效，本场纸面+5', selfPaper:5 },
-  { id:'injury', name:'核心伤退', emoji:'🤕', type:'stat', weight:1, desc:'对方核心热身受伤，本场纸面-5', oppPaper:-5 },
-  { id:'twelfthman', name:'第十二人', emoji:'📣', type:'stat', weight:1, desc:'主场球迷山呼海啸，本场化学+12', selfChem:12 },
-  { id:'stamina', name:'体能拉满', emoji:'💪', type:'stat', weight:1, desc:'特训见效，本场纸面+3、化学+10', selfPaper:3, selfChem:10 },
-  { id:'mindgames', name:'心理博弈', emoji:'🧠', type:'stat', weight:1, desc:'舆论战打崩对方心态，本场化学-12', oppChem:-12 },
-  { id:'goldengen', name:'黄金一代', emoji:'👑', type:'stat', weight:1, desc:'年轻球员集体爆发，本场化学+18', selfChem:18 },
-  { id:'ironwall', name:'钢铁防线', emoji:'🧱', type:'stat', weight:1, desc:'后防众志成城，本场纸面+5', selfPaper:5 },
-  { id:'lucky', name:'幸运星', emoji:'🍀', type:'stat', weight:1, desc:'运气爆棚，纸面+3、对方化学-8', selfPaper:3, oppChem:-8 },
-  { id:'rest', name:'核心轮休', emoji:'💤', type:'carry', weight:1, desc:'下一场对方核心轮休，纸面-5', nextOppPaper:-5 },
-  { id:'revenge', name:'复仇宣言', emoji:'🔪', type:'carry', weight:1, desc:'下一场复仇buff，化学+15', nextSelfChem:15 },
-  { id:'momentum', name:'连胜气势', emoji:'🚀', type:'carry', weight:1, desc:'下一场气势如虹，纸面+4', nextSelfPaper:4 },
-  { id:'invasion', name:'球迷冲场', emoji:'🏃', type:'egg', weight:.25, desc:'球迷冲入场内！比赛腰斩，随机一方0-3判负', forfeit:true },
-  { id:'oghattrick', name:'乌龙帽子戏法', emoji:'🤡', type:'egg', weight:.25, desc:'对方后卫上演乌龙帽子戏法，他们-2球', oppGoals:-2 },
-  { id:'gkgod', name:'门将开挂', emoji:'🧙', type:'egg', weight:.25, desc:'对方门将化身八臂哪吒，他们-2球', oppGoals:-2 },
-  { id:'meteor', name:'天降流星', emoji:'☄️', type:'egg', weight:.25, desc:'流星砸进对方球门，你+2球', goals:2 },
-  { id:'chaos', name:'混沌之球', emoji:'🎲', type:'egg', weight:.25, desc:'球场乱作一团，随机一方+2球', chaos:2 },
-];
-const EVENT_TYPE_NAME = { score:'比分事件', stat:'数值事件', carry:'跨场伏笔', egg:'彩蛋事件' };
-const EVENT_BY_ID = Object.fromEntries(EVENT_CARDS.map(c => [c.id, c]));
+// BO3随机事件卡（26张）：从 engine.js 统一导入 v4 90分钟 MATCH_CARDS
+// 旧 BO3 常量已移除
 const COURTOIS = { id: 'shared_courtois', name: '蒂博·库尔图瓦', englishName: 'Thibaut Courtois', rating: 90, position: 'GK', detailedPosition: 'GK', alternativePositions: [], club: '固定门将', league: '特殊卡', country: '比利时', grade: 'S' };
 let game = null;
 let selectedId = null;
@@ -167,7 +156,7 @@ function newGame(settings) {
     log: [],
     snapshots: [],
     lineup: { PLAYER: null, AI: null },
-    series: null, // BO3随机事件状态
+    series: null, // 旧 BO3，已移除，BP 完成后用 match: null
     result: null,
   };
   game.rounds = generateRounds();
@@ -616,10 +605,11 @@ function assignToSlots(picks) {
   }
   return result;
 }
+// 旧 BO3 残留辅助函数（dead code，保留以防外部测试引用）
 function normalRandom() { const u=1-rng(),v=1-rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
 function poisson(lambda) { const l=Math.exp(-lambda);let p=1,k=0;do{k++;p*=rng();}while(p>l&&k<10);return k-1; }
 function drawEventCards(count, excludeIds, noCarry = false) {
-  const pool = EVENT_CARDS.filter(c => !excludeIds.includes(c.id) && !(noCarry && c.type === 'carry'));
+  const pool = MATCH_CARDS.filter(c => !excludeIds.includes(c.id));
   const drawn = [];
   while (drawn.length < count && pool.length) {
     const totalW = pool.reduce((s, c) => s + (c.weight || 1), 0);
@@ -630,133 +620,162 @@ function drawEventCards(count, excludeIds, noCarry = false) {
   }
   return drawn;
 }
-function eventCardValue(card) {
-  let v = 0;
-  if (card.forfeit) v += 5;
-  if (card.chaos) v += 6;
-  if (card.goals) v += card.goals * 10;
-  if (card.oppGoals) v += Math.abs(card.oppGoals) * 10;
-  if (card.selfPaper) v += card.selfPaper * 2;
-  if (card.selfChem) v += card.selfChem * .5;
-  if (card.oppPaper) v += Math.abs(card.oppPaper) * 2;
-  if (card.oppChem) v += Math.abs(card.oppChem) * .5;
-  if (card.nextSelfPaper) v += card.nextSelfPaper * 1.5;
-  if (card.nextSelfChem) v += card.nextSelfChem * .35;
-  if (card.nextOppPaper) v += Math.abs(card.nextOppPaper) * 1.5;
-  if (card.nextOppChem) v += Math.abs(card.nextOppChem) * .35;
-  return v + rng() * 1.5;
+// ─── 90分钟比赛函数（v4，调用 engine.js）───
+function getRng() {
+  let x = game.rng >>> 0;
+  x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+  game.rng = x >>> 0;
+  return game.rng / 4294967296;
 }
-function aiPickEventCard() {
-  const ids = game.series.aiDraw;
-  if (!ids.length) return null;
-  return ids.map(id => ({ id, v: eventCardValue(EVENT_BY_ID[id]) })).sort((a, b) => b.v - a.v)[0].id;
+
+function aiRng() {
+  return { next: () => getRng() };
 }
-function startSeries() {
-  game.series = { matchIndex: 0, stage: 'draw', matches: [], playerWins: 0, aiWins: 0, playerDraw: [], aiDraw: [], playerChoice: null, aiChoice: null, pending: {} };
-  game.phase = 'event';
-  game.screen = 'series';
-  startMatchDraw();
-}
-function startMatchDraw() {
-  const s = game.series;
-  const noCarry = s.matchIndex >= 2;
-  const usedIds = s.matches.flatMap(m => [m.events?.PLAYER, m.events?.AI]).filter(Boolean);
-  s.playerDraw = drawEventCards(3, usedIds, noCarry).map(c => c.id);
-  s.aiDraw = drawEventCards(3, [...usedIds, ...s.playerDraw], noCarry).map(c => c.id);
-  s.playerChoice = null;
-  s.aiChoice = null;
-  s.stage = 'draw';
-  game.phase = 'event';
-  snapshot(`第${s.matchIndex + 1}场事件抽卡`);
+
+// 战术风格选择界面（BP 完成后，比赛开始前）
+function showTacticalPick() {
+  game.phase = 'tactical_pick';
+  game.screen = 'tactical_pick';
+  snapshot('选择战术风格');
   save(); render();
 }
-function confirmEventCard(id) {
-  const s = game.series;
-  if (!s || s.stage !== 'draw' || !s.playerDraw.includes(id)) return;
-  s.playerChoice = id;
-  s.aiChoice = aiPickEventCard();
-  s.stage = 'reveal';
+
+// 选择战术风格
+function pickTacticalStyle(styleId) {
+  game.match = game.match || {};
+  game.match.aStyle = styleId;
+  game.match.bStyle = 'longball'; // AI 默认长传冲吊
+  snapshot(`玩家选择战术：${STYLE_BY_ID[styleId]?.name}`);
+  save(); render();
+  // 初始化 90 分钟比赛
+  startMatch90(game, aiRng());
+  snapshot('90分钟比赛开始');
+  save(); render();
+}
+
+// ─── 出牌（同时出）───
+// phase = 'match_draw' 阶段可出牌
+function playCard(cardId) {
+  if (game.phase !== 'match_draw') return;
+  const m = game.match;
+  // 玩家选择这张牌
+  m.aChoice = cardId;
+  // AI 选牌
+  const hand = m.aDraw.filter(id => !m.aPlayed.includes(id));
+  const aiHand = m.bDraw.filter(id => !m.bPlayed.includes(id));
+  const aiChoice = aiPickMatchCard(aiRng(), aiHand);
+  m.bChoice = aiChoice;
+  m.phase = 'reveal';
+
+  // 即时牌推进到对应分钟；修正牌进 pending
+  if (cardId) {
+    const card = EVENT_BY_ID[cardId];
+    if (card?.type === 'instant') {
+      const targetMin = Math.min(card.minuteEnd || card.minute, 90);
+      advanceToMinute(game, aiRng(), targetMin);
+    } else if (card?.type === 'modifier') {
+      m.aPending = m.aPending || [];
+      m.aPending.push(card);
+    }
+  }
+  if (aiChoice) {
+    const card = EVENT_BY_ID[aiChoice];
+    if (card?.type === 'instant') {
+      const targetMin = Math.min(card.minuteEnd || card.minute, 90);
+      advanceToMinute(game, aiRng(), targetMin);
+    } else if (card?.type === 'modifier') {
+      m.bPending = m.bPending || [];
+      m.bPending.push(card);
+    }
+  }
+
+  // 即时牌得分结算（已在 advanceToMinute 里处理了）
+  // 强制进入重要模式
+  m.mode = 'important';
+  m.modeStartMin = m.tickMinute;
+
+  // 记录事件
+  const narrateCard = (side, id) => {
+    if (!id) return null;
+    const card = EVENT_BY_ID[id];
+    return card?.narrate || card?.name || id;
+  };
+  const playerNarr = narrateCard('PLAYER', cardId);
+  const aiNarr = narrateCard('AI', aiChoice);
+  if (playerNarr || aiNarr) {
+    m.importantEvents = m.importantEvents || [];
+    if (playerNarr) m.importantEvents.push({ tick: m.tickMinute, type: 'instant', text: playerNarr, side: 'PLAYER', cardId });
+    if (aiNarr) m.importantEvents.push({ tick: m.tickMinute, type: 'instant', text: aiNarr, side: 'AI', cardId });
+  }
+
   beep('select');
   save(); render();
 }
-function collectEventMods(pc, ac, pending) {
-  const m = { pPaper: pending?.pPaper || 0, aPaper: pending?.aPaper || 0, pChem: pending?.pChem || 0, aChem: pending?.aChem || 0, pg: 0, ag: 0, chaos: 0, forfeit: null };
-  const add = (card, holder) => {
-    if (!card) return;
-    const mine = holder === 'PLAYER';
-    const sp = mine ? 'pPaper' : 'aPaper', sc = mine ? 'pChem' : 'aChem';
-    const op = mine ? 'aPaper' : 'pPaper', oc = mine ? 'aChem' : 'pChem';
-    const mg = mine ? 'pg' : 'ag', og = mine ? 'ag' : 'pg';
-    if (card.goals) m[mg] += card.goals;
-    if (card.oppGoals) m[og] += card.oppGoals;
-    if (card.selfPaper) m[sp] += card.selfPaper;
-    if (card.selfChem) m[sc] += card.selfChem;
-    if (card.oppPaper) m[op] += card.oppPaper;
-    if (card.oppChem) m[oc] += card.oppChem;
-    if (card.chaos) m.chaos += card.chaos;
-    if (card.forfeit) m.forfeit = holder;
-  };
-  add(pc, 'PLAYER'); add(ac, 'AI');
-  return m;
-}
-function collectEventCarry(pc, ac) {
-  const p = { pPaper: 0, aPaper: 0, pChem: 0, aChem: 0 };
-  const add = (card, holder) => {
-    if (!card) return;
-    const mine = holder === 'PLAYER';
-    const sp = mine ? 'pPaper' : 'aPaper', sc = mine ? 'pChem' : 'aChem';
-    const op = mine ? 'aPaper' : 'pPaper', oc = mine ? 'aChem' : 'pChem';
-    if (card.nextSelfPaper) p[sp] += card.nextSelfPaper;
-    if (card.nextSelfChem) p[sc] += card.nextSelfChem;
-    if (card.nextOppPaper) p[op] += card.nextOppPaper;
-    if (card.nextOppChem) p[oc] += card.nextOppChem;
-  };
-  add(pc, 'PLAYER'); add(ac, 'AI');
-  return p;
-}
-function resolveMatch() {
-  const s = game.series;
-  if (!s || s.stage !== 'reveal') return;
-  const pc = EVENT_BY_ID[s.playerChoice], ac = EVENT_BY_ID[s.aiChoice];
-  const pm = lineupMetrics(game.lineup.PLAYER), am = lineupMetrics(game.lineup.AI);
-  const mods = collectEventMods(pc, ac, s.pending || {});
-  const home = s.matchIndex === 0 ? 1 : s.matchIndex === 1 ? -1 : 0;
-  let match;
-  if (mods.forfeit) {
-    const loser = rng() < .5 ? 'PLAYER' : 'AI';
-    match = { pg: loser === 'PLAYER' ? 0 : 3, ag: loser === 'AI' ? 0 : 3, forfeit: true };
-  } else {
-    const pO = pm.overall + (mods.pPaper + mods.pChem) / 2;
-    const aO = am.overall + (mods.aPaper + mods.aChem) / 2;
-    const pVar = normalRandom() * 2 * (1 - pm.chemistry / 180), aVar = normalRandom() * 2 * (1 - am.chemistry / 180);
-    const ps = pO + pVar + Math.max(0, home), as = aO + aVar + Math.max(0, -home);
-    let pg = poisson(Math.max(.25, 1.35 * Math.exp((ps - as) / 16))) + mods.pg;
-    let ag = poisson(Math.max(.25, 1.35 * Math.exp((as - ps) / 16))) + mods.ag;
-    if (mods.chaos) { if (rng() < .5) pg += mods.chaos; else ag += mods.chaos; }
-    pg = Math.max(0, pg); ag = Math.max(0, ag);
-    match = { pg, ag };
+
+// ─── 快进/推进（重要模式结束后自动继续）───
+function advanceMatch() {
+  if (game.phase !== 'match_important') return;
+  const m = game.match;
+  m.mode = 'fast';
+  m.modeStartMin = m.tickMinute;
+
+  // 快进到下一个关键事件（下一个即时牌 minute 或下一个进球概率高峰）
+  // 简化策略：快进 5 分钟 + 每分钟跑 Bernoulli
+  const targetMin = Math.min(m.tickMinute + 5, 90);
+  advanceToMinute(game, aiRng(), targetMin);
+  m.tickMinute = targetMin;
+
+  // 快进后自动切回重要（如果还有手牌且未到90分钟）
+  if (m.tickMinute >= 90) {
+    // 比赛结束
+    advanceToMinute(game, aiRng(), 90);
+    m.phase = 'finished';
+    finishMatch90(game);
+    if (game.phase === 'penalty') {
+      startPenaltyShootout(game, aiRng());
+      game.phase = 'penalty';
+    } else {
+      resolveMatch90(game);
+    }
+    const record = buildHistoryRecord();
+    storeHistory(record);
+    localStorage.removeItem(ACTIVE_KEY);
+    beep(game.result?.winner === 'PLAYER' ? 'win' : 'lose');
   }
-  let winner = 'DRAW';
-  if (match.pg > match.ag) { winner = 'PLAYER'; s.playerWins++; }
-  else if (match.ag > match.pg) { winner = 'AI'; s.aiWins++; }
-  match = { ...match, venue: home === 1 ? '玩家主场' : home === -1 ? 'AI主场' : '中立场', winner, events: { PLAYER: s.playerChoice, AI: s.aiChoice } };
-  s.matches.push(match);
-  s.pending = collectEventCarry(pc, ac);
-  s.stage = 'match';
-  game.phase = 'match';
   save(); render();
 }
-function finishSeries() {
-  const s = game.series;
-  const pm = lineupMetrics(game.lineup.PLAYER), am = lineupMetrics(game.lineup.AI);
-  let winner = s.playerWins > s.aiWins ? 'PLAYER' : 'AI';
-  if (Math.abs(pm.overall - am.overall) <= .5 && s.playerWins === s.aiWins) winner = pm.chemistry >= am.chemistry ? 'PLAYER' : 'AI';
-  const winning = winner === 'PLAYER' ? game.lineup.PLAYER : game.lineup.AI; const wm = winner === 'PLAYER' ? pm : am;
-  const mvp = SLOT_ORDER.map(slot => player(winning[slot])).filter(p => p.position !== 'GK').map(p => ({ p, score: p.rating + (p.club ? 2 : 0) + wm.chemistry * .05 + rng() * 3 })).sort((a, b) => b.score - a.score)[0].p;
-  game.result = { winner, pw: s.playerWins, aw: s.aiWins, matches: s.matches, metrics: { PLAYER: pm, AI: am }, mvp: mvp.id };
-  game.phase = 'result'; game.screen = 'result'; snapshot('三局两胜结算');
-  const record = { id: Date.now(), date: new Date().toISOString(), version: RULE_VERSION, seed: game.seed, settings: game.settings, winner, pw: s.playerWins, aw: s.aiWins, matches: clone(s.matches), metrics: clone(game.result.metrics), mvp: mvp.id, picks: clone(game.picks), lineup: clone(game.lineup), log: clone(game.log), snapshots: clone(game.snapshots), players: game.players.filter(p => [...game.picks.PLAYER, ...game.picks.AI].includes(p.id)) };
-  storeHistory(record); localStorage.removeItem(ACTIVE_KEY); beep(winner === 'PLAYER' ? 'win' : 'lose'); render();
+
+// ─── 90分钟比赛结束，进入点球 ──
+function takePenalty() {
+  startPenaltyShootout(game, aiRng());
+  resolveMatch90(game);
+  const record = buildHistoryRecord();
+  storeHistory(record);
+  localStorage.removeItem(ACTIVE_KEY);
+  beep(game.result?.winner === 'PLAYER' ? 'win' : 'lose');
+  save(); render();
+}
+
+function buildHistoryRecord() {
+  const r = game.result;
+  return {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    version: RULE_VERSION,
+    seed: game.seed,
+    settings: game.settings,
+    winner: r.winner,
+    ag: r.ag, bg: r.bg,
+    penalty: r.penalty,
+    metrics: r.metrics,
+    mvp: r.mvpId,
+    style: r.style,
+    picks: clone(game.picks),
+    lineup: clone(game.lineup),
+    log: clone(game.log),
+    snapshots: clone(game.snapshots),
+    players: game.players.filter(p => [...game.picks.PLAYER, ...game.picks.AI].includes(p.id)),
+  };
 }
 function setScreen(screen) { game ||= {}; game.screen=screen; render(); }
 function reset() { clearTimeout(aiTimer); game=null; selectedId=null; localStorage.removeItem(ACTIVE_KEY); render(); }
@@ -803,12 +822,14 @@ function bansPanel() {
   return `<section class="ban-panel">${row('PLAYER')}${row('AI')}</section>`;
 }
 function header() {
-  const roundInfo = game.rounds[game.round];
-  const isSeries = ['event','match','result','lineup'].includes(game.phase);
-  const positionLabel = isSeries ? '三局两胜' : (roundInfo ? POSITION_NAME[roundInfo.category] : '结算');
-  const hint = isSeries ? '大乱斗模式' : (roundInfo?.hint || '');
-  const roundNo = Math.min(game.round + 1, game.rounds.length);
-  return `<header class="app-header"><div class="logo">DRAFT<span>XI</span></div><div class="round-meta">第 ${roundNo} / ${game.rounds.length} 轮 · ${positionLabel} <small>${hint}</small></div><button class="ghost" data-home>退出</button></header>`;
+  const roundInfo = game.rounds && game.rounds[game.round];
+  const isMatch = ['tactical_pick','match','match_draw','match_important','reveal','penalty','result'].includes(game.phase);
+  const phaseLabel = isMatch
+    ? (game.phase === 'tactical_pick' ? '选择战术' : game.phase === 'match_draw' ? '出牌阶段' : game.phase === 'match_important' ? '重要时刻' : game.phase === 'penalty' ? '点球大战' : game.phase === 'result' ? '比赛结束' : '90分钟比赛')
+    : (roundInfo ? POSITION_NAME[roundInfo.category] : '结算');
+  const hint = isMatch ? (game.match ? `⏱ ${game.match.tickMinute}' / 90'` : '') : (roundInfo?.hint || '');
+  const roundNo = Math.min((game.round || 0) + 1, (game.rounds?.length || 4));
+  return `<header class="app-header"><div class="logo">DRAFT<span>XI</span></div><div class="round-meta">${isMatch ? phaseLabel : `第 ${roundNo} / ${game.rounds?.length || 4} 轮`} · ${phaseLabel} <small>${hint}</small></div><button class="ghost" data-home>退出</button></header>`;
 }
 function menu() { const active=localStorage.getItem(ACTIVE_KEY); return `<div class="landing"><div class="landing-copy"><span class="kicker">BAN · PICK · BUILD</span><h1>禁掉威胁<br><em>选出你的最强十一人</em></h1><p>四轮足球BP：前两轮16人双选、第三轮14人三选、终轮全明星各位置1人，每轮仅3次禁用。三局两胜，每场开赛前双方各抽一张随机事件卡——大乱斗一触即发。</p><div class="menu-actions"><button class="primary" data-new>开始人机对战</button><button class="accent" data-online>好友在线对战</button>${active?'<button data-resume>继续未完成对局</button>':''}<button data-history>最近20局</button><a href="legacy/index.html">旧经营模式</a></div></div><div class="hero-board"><div class="versus"><span>YOU</span><b>VS</b><span>AI / 好友</span></div><div class="rule-cards"><article><b>4</b><span>轮选秀</span></article><article><b>3</b><span>禁用/轮</span></article><article><b>11</b><span>最终阵容</span></article></div></div></div>`; }
 function onlineLobby() { 
@@ -938,32 +959,199 @@ function metricPanel(side) {
   return `<div class="metric-panel"><div><span>纸面实力</span><b>${m.paper.toFixed(1)}</b></div><div><span>化学反应</span><b>${m.chemistry.toFixed(1)}</b></div><div class="overall"><span>综合实力</span><b>${m.overall.toFixed(1)}</b></div><small>前锋 ${m.lines.FWD.toFixed(1)} · 中场 ${m.lines.MID.toFixed(1)} · 后卫 ${m.lines.DEF.toFixed(1)}</small></div>`;
 }
 function lineupScreen() {
-  return `<div class="game">${header()}<main class="lineup-page"><div class="section-title"><div><span class="kicker">FINAL LINEUP</span><h1>两军对垒 · 4-3-3</h1><p>双方阵容已由系统自动排出最优布局。三局两胜，每场开赛前双方各抽一张随机事件卡——大乱斗一触即发。</p></div><button class="primary" data-play>确认阵容 · 开始抽事件卡</button></div><div class="lineup-compare"><section class="lineup-side lineup-player"><header><h2>玩家阵容</h2><span class="side-score">综合 ${lineupMetrics(game.lineup.PLAYER).overall.toFixed(1)}</span></header>${pitch('PLAYER', 'normal')}${metricPanel('PLAYER')}</section><section class="lineup-side lineup-ai"><header><h2>AI阵容</h2><span class="side-score">综合 ${lineupMetrics(game.lineup.AI).overall.toFixed(1)}</span></header>${pitch('AI', 'reverse')}${metricPanel('AI')}</section></div></main></div>`;
+  return `<div class="game">${header()}<main class="lineup-page"><div class="section-title"><div><span class="kicker">FINAL LINEUP</span><h1>两军对垒 · 4-3-3</h1><p>双方阵容已由系统自动排出最优布局。接下来选择战术风格，然后开始90分钟精彩对决！</p></div><button class="primary" data-start-match>确认阵容 · 选择战术风格</button></div><div class="lineup-compare"><section class="lineup-side lineup-player"><header><h2>玩家阵容</h2><span class="side-score">综合 ${lineupMetrics(game.lineup.PLAYER).overall.toFixed(1)}</span></header>${pitch('PLAYER', 'normal')}${metricPanel('PLAYER')}</section><section class="lineup-side lineup-ai"><header><h2>AI阵容</h2><span class="side-score">综合 ${lineupMetrics(game.lineup.AI).overall.toFixed(1)}</span></header>${pitch('AI', 'reverse')}${metricPanel('AI')}</section></div></main></div>`;
 }
-function eventScreen() {
-  const s = game.series;
-  if (!s) return menu();
-  const venue = s.matchIndex === 0 ? '玩家主场' : s.matchIndex === 1 ? 'AI主场' : '中立场';
-  const cardHTML = (cardId, { faceDown = false, chosen = false, clickable = false } = {}) => {
-    const c = EVENT_BY_ID[cardId];
-    if (faceDown) return `<div class="event-card face-down"><span>❓</span><b>未知事件</b><small>AI的手牌</small></div>`;
-    return `<button class="event-card ${c.type} ${chosen ? 'chosen' : ''}" data-event-card="${cardId}" ${clickable ? '' : 'disabled'}><span class="ec-emoji">${c.emoji}</span><b>${c.name}</b><small>${EVENT_TYPE_NAME[c.type]}</small><p>${c.desc}</p></button>`;
+// ─── 战术风格选择（BP完成后，比赛前）───
+function tacticalPickScreen() {
+  const styles = TACTICAL_STYLES;
+  const styleHTML = s => `
+    <div class="tactical-style-card" data-style="${s.id}">
+      <div class="style-emoji">${s.emoji}</div>
+      <h3>${esc(s.name)}</h3>
+      <p>${esc(s.desc)}</p>
+      <div class="style-phases">
+        ${s.phaseBonus.map(p => `<span>${p.start}-${p.end}分钟: 纸面+${p.selfPaper} 化学+${p.selfChem}</span>`).join('')}
+      </div>
+    </div>`;
+  return `<div class="game">${header()}<main class="tactical-pick-page">
+    <span class="kicker">TACTICAL STYLE</span>
+    <h1>选择你的战术风格</h1>
+    <p>比赛开始前选择你的主导战术。比赛中随时可以在界面上切换，不限次数。</p>
+    <div class="style-grid">${styles.map(s => styleHTML(s)).join('')}</div>
+  </main></div>`;
+}
+
+// ─── 90分钟比赛界面───
+function match90Screen() {
+  const m = game.match;
+  if (!m) return menu();
+
+  // 进度条
+  const pct = Math.min(100, (m.tickMinute / 90) * 100);
+  const modeIcon = m.mode === 'important' ? '⏱️' : '⚡';
+  const modeLabel = m.mode === 'important' ? '重要' : '快进';
+  const modeClass = m.mode === 'important' ? 'mode-important' : 'mode-fast';
+
+  // 战术风格标签
+  const aStyleName = m.aStyle ? (STYLE_BY_ID[m.aStyle]?.emoji || '') + ' ' + (STYLE_BY_ID[m.aStyle]?.name || '') : '未选择';
+  const bStyleName = m.bStyle ? (STYLE_BY_ID[m.bStyle]?.emoji || '') + ' ' + (STYLE_BY_ID[m.bStyle]?.name || '') : '未选择';
+
+  // 事件播报（最近5条）
+  const recentEvents = (m.importantEvents || []).slice(-6).map(ev => {
+    const cls = ev.side === 'PLAYER' ? 'ev-player' : 'ev-ai';
+    return `<div class="event-broadcast ${cls}"><b>${ev.tick}'</b> ${esc(ev.text || '')}</div>`;
+  }).join('');
+
+  // 手牌（未打出的）
+  const playerHand = (m.aDraw || []).filter(id => !(m.aPlayed || []).includes(id));
+  const aiHand = (m.bDraw || []).filter(id => !(m.bPlayed || []).includes(id));
+
+  const cardHTML = (id, opts = {}) => {
+    const c = EVENT_BY_ID[id];
+    if (!c) return '';
+    const cls = `match-card ${c.type}${opts.chosen ? ' chosen' : ''}`;
+    const typeLabel = c.type === 'instant' ? '即时' : '修正';
+    const windowInfo = c.type === 'instant'
+      ? `触发: ${c.minute}'`
+      : `生效: ${c.windowStart}-${c.windowEnd}分钟`;
+    return `<button class="${cls}" data-card="${id}" ${opts.clickable ? '' : 'disabled'}>
+      <span class="mc-emoji">${c.emoji}</span>
+      <b>${c.name}</b>
+      <small>${typeLabel}</small>
+      <small>${windowInfo}</small>
+    </button>`;
   };
-  const yourCards = s.playerDraw.map(id => cardHTML(id, { chosen: s.playerChoice === id, clickable: s.stage === 'draw' })).join('');
-  const aiCards = s.aiDraw.map(id => cardHTML(id, { faceDown: !(s.stage === 'reveal' && s.aiChoice === id), chosen: s.aiChoice === id })).join('');
-  const title = s.stage === 'draw' ? '抽一张事件卡' : '双方事件揭晓';
-  const hint = s.stage === 'draw' ? '三张卡里选一张，它将在本场比赛中生效。彩蛋卡概率约15%，大乱斗开启！' : 'AI也做出了选择。开球看看会发生什么！';
-  const pendingTip = (s.pending && Object.values(s.pending).some(v => v)) ? '<p class="event-pending">📌 上一场的跨场伏笔将在本场生效</p>' : '';
-  return `<div class="game">${header()}<main class="event-page"><span class="kicker">EVENT DRAW · MATCH ${s.matchIndex + 1} · ${venue}</span><h1>${title}</h1><p>${hint}</p>${pendingTip}<section class="event-row"><h3>你的手牌</h3><div class="event-cards">${yourCards}</div></section><section class="event-row"><h3>AI的手牌</h3><div class="event-cards">${aiCards}</div></section>${s.stage === 'reveal' ? `<button class="primary" data-event-play>开球 · 第${s.matchIndex + 1}场</button>` : ''}</main></div>`;
+
+  const playerCards = playerHand.map(id => cardHTML(id, { clickable: m.phase === 'match_draw' })).join('');
+  const aiCards = (aiHand.map(id => `<div class="match-card opponent-card face-down"><span>❓</span><b>未知</b></div>`)).join('');
+
+  // 比分大字
+  const scoreHTML = `<div class="match-score"><span class="score-side player">${m.ag}</span><span class="score-sep">:</span><span class="score-side ai">${m.bg}</span></div>`;
+
+  // 当前操作区
+  let actionHTML = '';
+  if (m.phase === 'match_draw') {
+    actionHTML = `<div class="match-action">
+      <p class="action-hint">⚡ 选择一张手牌打出，或点击下方快进按钮跳过</p>
+      <button class="primary" data-fast-forward>⚡ 快进 5 分钟（跳过出牌）</button>
+    </div>`;
+  } else if (m.phase === 'match_important') {
+    actionHTML = `<div class="match-action">
+      <button class="primary" data-match-continue>▶ 继续比赛</button>
+    </div>`;
+  }
+
+  // 战术切换（始终可点）
+  const styleSwitchHTML = TACTICAL_STYLES.map(s =>
+    `<button class="style-switch-btn ${m.aStyle === s.id ? 'active' : ''}" data-switch-style="${s.id}">${s.emoji} ${s.name}</button>`
+  ).join('');
+
+  return `<div class="game">${header()}
+    <div class="match90-layout">
+      <div class="match-timeline-bar">
+        <div class="time-progress" style="width:${pct}%"></div>
+        <div class="time-labels">
+          <span class="mode-badge ${modeClass}">${modeIcon} ${modeLabel}</span>
+          <span class="time-display">${m.tickMinute}' / 90'</span>
+        </div>
+      </div>
+
+      <div class="match-score-row">
+        <div class="match-team player-team">
+          <span class="team-name">你</span>
+          <span class="team-style">${aStyleName}</span>
+        </div>
+        ${scoreHTML}
+        <div class="match-team ai-team">
+          <span class="team-style">${bStyleName}</span>
+          <span class="team-name">AI</span>
+        </div>
+      </div>
+
+      <div class="match-events-row">
+        <div class="event-log">${recentEvents || '<span class="empty-log">比赛进行中...</span>'}</div>
+      </div>
+
+      <div class="match-cards-row">
+        <section class="hand-section player-hand">
+          <h4>你的手牌 <small>（${playerHand.length}张）</small></h4>
+          <div class="hand-cards">${playerCards || '<span>无手牌</span>'}</div>
+        </section>
+        <section class="hand-section ai-hand">
+          <h4>AI手牌 <small>（${aiHand.length}张）</small></h4>
+          <div class="hand-cards">${aiCards}</div>
+        </section>
+      </div>
+
+      <div class="match-style-row">
+        <h4>战术风格（可随时切换）</h4>
+        <div class="style-switcher">${styleSwitchHTML}</div>
+      </div>
+
+      <div class="match-action-row">${actionHTML}</div>
+    </div>
+  </main></div>`;
 }
-function matchScreen() {
-  const s = game.series;
-  const m = s.matches[s.matches.length - 1];
-  const pc = EVENT_BY_ID[m.events?.PLAYER], ac = EVENT_BY_ID[m.events?.AI];
-  const decided = s.playerWins >= 2 || s.aiWins >= 2 || s.matches.length >= 3;
-  return `<div class="game">${header()}<main class="match-page"><span class="kicker">MATCH ${s.matches.length} · ${m.venue}${m.forfeit ? ' · 腰斩' : ''}</span><h1>${m.forfeit ? '比赛腰斩！' : `${m.pg} : ${m.ag}`}</h1>${m.forfeit ? '<p class="event-pending">球迷冲入场内，比赛腰斩，随机一方被判0-3负。</p>' : ''}<div class="match-events"><span>你 ${pc?.emoji || '⚽'} ${pc?.name || ''}</span><b>VS</b><span>AI ${ac?.emoji || '⚽'} ${ac?.name || ''}</span></div><div class="series-track">大比分 ${s.playerWins} : ${s.aiWins}</div><button class="primary" data-match-next>${decided ? '查看最终结果' : '下一场 · 抽事件卡'}</button></main></div>`;
+
+// ─── 点球大战界面───
+function penaltyScreen() {
+  const m = game.match;
+  const p = m.penalty;
+  if (!p) return match90Screen();
+
+  const roundsHTML = p.rounds.map((r, i) => `
+    <div class="penalty-round">
+      <span class="pr-num">第${r.round}轮</span>
+      <span class="pr-a ${r.aGoal === true ? 'goal' : r.aGoal === false ? 'miss' : 'pending'}">你 ${r.aGoal === true ? '✅' : r.aGoal === false ? '❌' : '⏳'}</span>
+      <span class="pr-b ${r.bGoal === true ? 'goal' : r.bGoal === false ? 'miss' : 'pending'}">AI ${r.bGoal === true ? '✅' : r.bGoal === false ? '❌' : '⏳'}</span>
+    </div>`).join('');
+
+  const winnerName = p.winner === 'PLAYER' ? '你' : 'AI';
+  return `<div class="game">${header()}<main class="penalty-page">
+    <span class="kicker">PENALTY SHOOTOUT</span>
+    <h1>⚽ 点球大战</h1>
+    <div class="penalty-score"><b>${p.aScore}</b><span> : </span><b>${p.bScore}</b></div>
+    <div class="penalty-rounds">${roundsHTML}</div>
+    <p class="penalty-result">${winnerName}赢得了点球大战！</p>
+    <div class="menu-actions">
+      <button class="primary" data-view-result>查看比赛结果</button>
+      <button class="primary" data-rematch>再来一局</button>
+      <button data-home>返回主菜单</button>
+    </div>
+  </main></div>`;
 }
-function resultScreen() { const r=game.result,win=r.winner==='PLAYER'; return `<div class="game result-page">${header()}<main><span class="kicker">BEST OF THREE</span><h1>${win?'你赢得了对局':'AI赢得了对局'}</h1><div class="series-score"><b>${r.pw}</b><span>:</span><b>${r.aw}</b></div><div class="matches">${r.matches.map((m,i)=>`<article><small>第${i+1}场 · ${m.venue}${m.forfeit?' · 腰斩':''}</small><strong>${m.pg} : ${m.ag}</strong>${m.events?`<em>${EVENT_BY_ID[m.events.PLAYER]?.emoji||'⚽'} vs ${EVENT_BY_ID[m.events.AI]?.emoji||'⚽'}</em>`:''}</article>`).join('')}</div><div class="result-metrics">${metricPanel('PLAYER')}${metricPanel('AI')}</div><div class="mvp">本局MVP <strong>${esc(nameZh(player(r.mvp)))}</strong></div><div class="menu-actions"><button class="primary" data-rematch>再来一局</button><button data-lineups>查看阵容</button><button data-replay>查看BP回放</button><button data-home>返回主菜单</button></div></main></div>`; }
+
+// ─── 最终结果界面───
+function resultScreen() {
+  const r = game.result;
+  if (!r) return menu();
+  const win = r.winner === 'PLAYER';
+  const scoreLabel = `${r.ag} : ${r.bg}`;
+  const penaltyNote = r.penalty ? `（点球 ${r.penalty.aScore}-${r.penalty.bScore}）` : '';
+  const styleNote = r.style ? `${STYLE_BY_ID[r.style?.A]?.emoji || ''} vs ${STYLE_BY_ID[r.style?.B]?.emoji || ''}` : '';
+  const eventsNote = (r.importantEvents || []).length
+    ? r.importantEvents.slice(-5).map(ev => `${ev.tick}' ${ev.text}`).join(' / ')
+    : '无重要事件';
+
+  return `<div class="game result-page">${header()}<main>
+    <span class="kicker">FULL TIME</span>
+    <h1>${win ? '你赢得了比赛！' : 'AI赢得了比赛'}</h1>
+    <div class="final-score"><b>${scoreLabel}</b>${penaltyNote ? `<small>${penaltyNote}</small>` : ''}</div>
+    <div class="result-teams">
+      <div class="result-team"><span>${STYLE_BY_ID[r.style?.A]?.emoji || '🏃'} 你</span><span>${STYLE_BY_ID[r.style?.A]?.name || ''}</span></div>
+      <div class="result-team"><span>${STYLE_BY_ID[r.style?.B]?.emoji || '🤖'} AI</span><span>${STYLE_BY_ID[r.style?.B]?.name || ''}</span></div>
+    </div>
+    <div class="result-metrics">${metricPanel('PLAYER')}${metricPanel('AI')}</div>
+    <div class="result-events"><h4>精彩瞬间</h4><p>${esc(eventsNote)}</p></div>
+    ${r.mvpId ? `<div class="mvp">本场MVP <strong>${esc(nameZh(player(r.mvpId)))}</strong></div>` : ''}
+    <div class="menu-actions">
+      <button class="primary" data-rematch>再来一局</button>
+      <button data-lineups>查看阵容</button>
+      <button data-replay>查看BP回放</button>
+      <button data-home>返回主菜单</button>
+    </div>
+  </main></div>`;
+}
 function historyScreen() { const list=histories(); return `<div class="history-page"><header><h1>最近20局</h1><button data-home>返回</button></header>${list.length?list.map((r,i)=>`<article><div><b>${r.winner==='PLAYER'?'胜利':'失败'} ${r.pw}:${r.aw}</b><span>${new Date(r.date).toLocaleString()}</span></div><div>玩家 ${r.metrics.PLAYER.overall.toFixed(1)} · AI ${r.metrics.AI.overall.toFixed(1)}</div><button data-history-replay="${i}">逐步回放</button></article>`).join(''):'<p class="empty">暂无完成的对局</p>'}</div>`; }
 function replayScreen() { const record=game.replayRecord, step=game.replayStep||0, snap=record.snapshots[step]; return `<div class="replay-page"><header><h1>BP逐步回放</h1><button data-home>返回</button></header><div class="replay-progress">${step+1} / ${record.snapshots.length} · ${esc(snap.label)}</div><div class="replay-columns"><section><h2>玩家阵容</h2>${snap.picks.PLAYER.map(id=>`<p>${esc(id==='shared_courtois'?'蒂博·库尔图瓦':nameZh(record.players.find(p=>p.id===id)||{name:id}))}</p>`).join('')}</section><section><h2>当轮候选</h2>${snap.candidates.map(id=>`<span>${esc(nameZh(record.players.find(p=>p.id===id)||{name:id}))}</span>`).join('')}</section><section><h2>AI阵容</h2>${snap.picks.AI.map(id=>`<p>${esc(id==='shared_courtois'?'蒂博·库尔图瓦':nameZh(record.players.find(p=>p.id===id)||{name:id}))}</p>`).join('')}</section></div><div class="replay-controls"><button data-step="-1" ${step===0?'disabled':''}>上一步</button><button data-step="1" ${step>=record.snapshots.length-1?'disabled':''}>下一步</button></div></div>`; }
 function onlinePlayer(id){return id===COURTOIS.id?COURTOIS:NORMALIZED_PLAYER_MAP.get(id);}
@@ -1180,7 +1368,7 @@ function render() {
   clearTimeout(aiTimer);
   if (!game) { app.innerHTML = menu(); bind(); return; }
   // 状态校验：当前对局阶段缺失必要字段时回到主菜单，避免页面卡死
-  const needsRounds = ['order','ban','postPick','prePick','summary','lineup','event','match','result'].includes(game.phase);
+  const needsRounds = ['order','ban','postPick','prePick','summary','lineup','tactical_pick','match','match_draw','match_important','reveal','finished','penalty','result'].includes(game.phase);
   if (needsRounds && (!Array.isArray(game.rounds) || !Number.isInteger(game.round))) {
     console.warn('[render] game state incomplete, resetting', { phase: game.phase, rounds: game.rounds, round: game.round });
     localStorage.removeItem(ACTIVE_KEY);
@@ -1200,7 +1388,7 @@ function render() {
   if (game.picks && Array.isArray(game.rounds) && Number.isInteger(game.round)) {
     const playerFull = (game.picks.PLAYER?.length || 0) >= 11;
     const aiFull = (game.picks.AI?.length || 0) >= 11;
-    if ((playerFull && aiFull) && !['lineup','event','match','result'].includes(game.phase)) {
+    if ((playerFull && aiFull) && !['lineup','tactical_pick','match','match_draw','match_important','reveal','penalty','result'].includes(game.phase)) {
       console.warn('[render] both lineups full but phase is', game.phase, '-> auto-finalize');
       try {
         finalizeLineups();
@@ -1232,8 +1420,9 @@ function render() {
   else if (game.phase === 'ban' || game.phase === 'prePick' || game.phase === 'postPick') html = bpScreen();
   else if (game.phase === 'summary') html = summaryScreen();
   else if (game.phase === 'lineup') html = lineupScreen();
-  else if (game.phase === 'event') html = eventScreen();
-  else if (game.phase === 'match') html = matchScreen();
+  else if (game.phase === 'tactical_pick') html = tacticalPickScreen();
+  else if (['match','match_draw','match_important','reveal','finished'].includes(game.phase)) html = match90Screen();
+  else if (game.phase === 'penalty') html = penaltyScreen();
   else if (game.phase === 'result') html = resultScreen();
   else html = menu();
   app.innerHTML = html;
@@ -1307,7 +1496,7 @@ function bind() {
       saved.postPicks = saved.postPicks || [];
       saved.roundBans = saved.roundBans || [];
       saved.roundPickIds = saved.roundPickIds || { PLAYER: [], AI: [] };
-      saved.series = saved.series || null;
+      saved.match = saved.match || null;
       saved.bans = saved.bans || { PLAYER: [], AI: [] };
       saved.picks = saved.picks || { PLAYER: ['shared_courtois'], AI: ['shared_courtois'] };
       saved.log = saved.log || [];
@@ -1323,10 +1512,38 @@ function bind() {
   document.querySelector('[data-confirm]')?.addEventListener('click',confirmPlayerAction);
   document.querySelector('[data-next]')?.addEventListener('click',continueRound);
   document.querySelectorAll('[data-slot]').forEach(el => el.onclick = () => {});
-  document.querySelector('[data-play]')?.addEventListener('click',startSeries);
-  document.querySelectorAll('[data-event-card]').forEach(el=>el.onclick=()=>confirmEventCard(el.dataset.eventCard));
-  document.querySelector('[data-event-play]')?.addEventListener('click',resolveMatch);
-  document.querySelector('[data-match-next]')?.addEventListener('click',()=>{const s=game?.series; if(!s)return; if(s.playerWins>=2||s.aiWins>=2||s.matches.length>=3){finishSeries();}else{s.matchIndex++;startMatchDraw();}});
+  // BP→比赛：选择战术风格
+  document.querySelector('[data-start-match]')?.addEventListener('click', () => {
+    // 进入战术选择
+    game.match = game.match || { aStyle: null, bStyle: null };
+    showTacticalPick();
+  });
+  document.querySelectorAll('[data-style]').forEach(el => el.onclick = () => pickTacticalStyle(el.dataset.style));
+  // 比赛内交互
+  document.querySelectorAll('.match-card[data-card]').forEach(el => el.onclick = () => playCard(el.dataset.card));
+  document.querySelector('[data-fast-forward]')?.addEventListener('click', () => {
+    if (!game.match) return;
+    // 把 phase 切换到 match_important（虚拟），后续可继续推进
+    advanceMatch();
+  });
+  document.querySelector('[data-match-continue]')?.addEventListener('click', () => {
+    advanceMatch();
+  });
+  document.querySelectorAll('[data-switch-style]').forEach(el => el.onclick = () => {
+    if (!game.match) return;
+    setTacticalStyle({ match: game.match }, 'A', el.dataset.switchStyle);
+    game.match.aStyle = el.dataset.switchStyle;
+    snapshot(`切换战术：${STYLE_BY_ID[el.dataset.switchStyle]?.name}`);
+    save(); render();
+  });
+  document.querySelector('[data-view-result]')?.addEventListener('click', () => {
+    resolveMatch90(game);
+    save(); render();
+  });
+  // 旧的 BO3 按钮保留（不匹配时自然忽略）
+  document.querySelectorAll('[data-event-card]').forEach(el=>el.onclick=()=>{});
+  document.querySelector('[data-event-play]')?.addEventListener('click',()=>{});
+  document.querySelector('[data-match-next]')?.addEventListener('click',()=>{});
   document.querySelector('[data-rematch]')?.addEventListener('click',rematch);
   document.querySelector('[data-lineups]')?.addEventListener('click',()=>{game.phase='lineup';game.screen='lineup';render();});
   document.querySelector('[data-replay]')?.addEventListener('click',()=>{const h=histories()[0];game={screen:'replay',replayRecord:h,replayStep:0};render();});
