@@ -1000,8 +1000,17 @@ function onlineConnect(action,payload){
   const client=new OnlineClient({
     session:({code, side})=>{
       online.invite=`${location.origin}${location.pathname}?room=${code}`;
-      online.state = { code, you: side };
+      // SESSION 消息先于 STATE 到达，此时只更新邀请链接和简化 state，
+      // 真正的渲染由 STATE 消息触发，避免用不完整 state 渲染
+      online.state = online.state && online.state.code === code
+        ? { ...online.state, code, you: side }
+        : { code, you: side, status: 'lobby', players: { A: { connected: true, side: 'A', nickname: online.nickname }, B: null } };
       history.replaceState(null,'',`?room=${code}`);
+      // SESSION 到达时也强制 render 一次，让用户看到等待页（即便 STATE 还没到）
+      if (game?.screen !== 'online-room') {
+        game = { screen: 'online-room' };
+        render();
+      }
     },
     state:(state)=>{
       const ownPicks = state.game?.picks?.[state.you] || [];
@@ -1031,8 +1040,9 @@ function onlineConnect(action,payload){
     if(action==='CREATE') client.create(payload.nickname);
     else if(action==='JOIN') client.join(payload.code, payload.nickname);
     else client.reconnect();
-  }).catch(()=>{
-    online.error='无法连接服务器，请确认使用 npm start 启动';
+  }).catch((err)=>{
+    console.error('[onlineConnect] failed:', err);
+    online.error=`无法连接服务器：${err?.message || err}。请确认后端服务已启动（本地：npm start；部署：检查 Render/Vercel 端口和 WS_HOST 配置）`;
     render();
   });
 }

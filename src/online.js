@@ -36,19 +36,41 @@ export class OnlineClient {
         wsUrl = `${protocol}//${location.host}/ws`;
       }
       console.log('[OnlineClient] Connecting to:', wsUrl);
-      this.socket = new WebSocket(wsUrl);
-      this.socket.addEventListener('open', () => { 
-        console.log('[OnlineClient] Connected'); 
-        resolve(); 
-        this.handlers.open?.(); 
+      let settled = false;
+      try {
+        this.socket = new WebSocket(wsUrl);
+      } catch (e) {
+        console.error('[OnlineClient] Construct error:', e);
+        reject(e);
+        return;
+      }
+      this.socket.addEventListener('open', () => {
+        settled = true;
+        console.log('[OnlineClient] Connected');
+        resolve();
+        this.handlers.open?.();
       });
-      this.socket.addEventListener('error', (e) => { 
-        console.error('[OnlineClient] Error:', e); 
-        reject(e); 
+      this.socket.addEventListener('error', (e) => {
+        console.error('[OnlineClient] Error:', e);
+        if (!settled) {
+          settled = true;
+          // 浏览器 ErrorEvent 的 message / Node ws ErrorEvent 的 error.code
+          const inner = e?.error || e;
+          const message = inner?.message
+            || (Array.isArray(inner?.errors) && inner.errors[0]?.message)
+            || inner?.code
+            || (e?.code ? `code=${e.code}` : 'WebSocket 连接失败');
+          reject(new Error(String(message)));
+        }
       });
-      this.socket.addEventListener('close', (e) => { 
-        console.log('[OnlineClient] Closed:', e.code, e.reason); 
-        this.handlers.close?.(e); 
+      this.socket.addEventListener('close', (e) => {
+        console.log('[OnlineClient] Closed:', e.code, e.reason);
+        this.handlers.close?.(e);
+        // 若 close 在 open 之前触发，说明连接建立失败
+        if (!settled) {
+          settled = true;
+          reject(new Error(`WebSocket 连接失败 (code=${e.code}) ${e.reason || ''}`));
+        }
       });
       this.socket.addEventListener('message', (event) => this.receive(event.data));
     });
