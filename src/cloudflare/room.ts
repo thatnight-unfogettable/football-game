@@ -5,11 +5,7 @@ const rooms = new Map();
 const rate = new Map();
 
 export function roomCode() {
-  let code;
-  do {
-    code = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
-  } while (rooms.has(code));
-  return code;
+  return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
 }
 
 export function token() {
@@ -589,7 +585,13 @@ function groupComponent(players: any[], key: string, steps: number[][], cap: num
     if (value) groups[value] = (groups[value] || 0) + 1;
   });
   let score = 0;
-  steps.forEach(([n, v]) => { if (Object.values(groups).some(c => c >= n)) score = v; });
+  for (const cnt of Object.values(groups)) {
+    let best = 0;
+    for (const [n, v] of steps) {
+      if (cnt >= n && v > best) best = v;
+    }
+    score += best;
+  }
   return Math.min(cap, score);
 }
 
@@ -622,7 +624,7 @@ const CN_NAMES: Record<string, string> = {
   'Nuno Mendes': '努诺·门德斯', 'Dani Carvajal': '达尼·卡瓦哈尔',
   'Alejandro Grimaldo': '亚历杭德罗·格里马尔多', 'Nicolò Barella': '尼科洛·巴雷拉',
   'Frenkie de Jong': '弗兰基·德容', 'Alexis Mac Allister': '亚历克西斯·麦卡利斯特',
-  'Vitinho': '维蒂尼亚', 'Hakan Çalhanoğlu': '哈坎·恰尔汗奥卢',
+  'Vitinha': '维蒂尼亚', 'Hakan Çalhanoğlu': '哈坎·恰尔汗奥卢',
   'Aurélien Tchouaméni': '奥雷利安·楚阿梅尼', 'Eduardo Camavinga': '爱德华多·卡马文加'
 };
 

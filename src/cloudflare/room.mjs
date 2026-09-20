@@ -581,8 +581,15 @@ function groupComponent(players, key, steps, cap) {
     const value = p[key];
     if (value) groups[value] = (groups[value] || 0) + 1;
   });
+  // 对每个组的 count 取最高 step 奖励，求和后封顶到 cap
   let score = 0;
-  steps.forEach(([n, v]) => { if (Object.values(groups).some(c => c >= n)) score = v; });
+  for (const cnt of Object.values(groups)) {
+    let best = 0;
+    for (const [n, v] of steps) {
+      if (cnt >= n && v > best) best = v;
+    }
+    score += best;
+  }
   return Math.min(cap, score);
 }
 

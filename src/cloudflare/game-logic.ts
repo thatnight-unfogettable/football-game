@@ -3,11 +3,7 @@ import { RULES } from '../../game.js';
 const PROTOCOL = 1;
 
 export function roomCode() {
-  let code: string;
-  do {
-    code = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
-  } while (false); // 在 Durable Object 中由存储管理
-  return code;
+  return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
 }
 
 export function token(): string {
@@ -272,7 +268,7 @@ export function simulateSeries(game: any) {
     }
     if (pg > ag) pw++;
     else aw++;
-    matches.push({ index: i + 1, playerGoals: pg, aiGoals: ag, venue: i === 0 ? '玩家主场' : i === 1 ? 'AI主场' : '中立场' });
+    matches.push({ index: i + 1, playerGoals: pg, aiGoals: ag, venue: i === 0 ? '玩家主场' : i === 1 ? 'AI主场' : '中立�? });
   }
   const winner = pw > aw ? 'player' : 'ai';
   const winning = winner === 'player' ? game.picks.player : game.picks.ai;
@@ -301,48 +297,48 @@ export function createRng(seed: number) {
 }
 
 const CN_NAMES: Record<string, string> = {
-  'Kylian Mbappé': '基利安·姆巴佩', 'Rodri': '罗德里', 'Erling Haaland': '埃尔林·哈兰德',
+  'Kylian Mbappé': '基利安·姆巴佩', 'Rodri': '罗德�?, 'Erling Haaland': '埃尔林·哈兰德',
   'Jude Bellingham': '裘德·贝林厄姆', 'Vinícius Júnior': '维尼修斯·儒尼奥尔',
-  'Kevin De Bruyne': '凯文·德布劳内', 'Harry Kane': '哈里·凯恩', 'Mohamed Salah': '穆罕默德·萨拉赫',
-  'Lautaro Martínez': '劳塔罗·马丁内斯', 'Robert Lewandowski': '罗伯特·莱万多夫斯基',
+  'Kevin De Bruyne': '凯文·德布劳内', 'Harry Kane': '哈里·凯恩', 'Mohamed Salah': '穆罕默德·萨拉�?,
+  'Lautaro Martínez': '劳塔罗·马丁内�?, 'Robert Lewandowski': '罗伯特·莱万多夫斯�?,
   'Thibaut Courtois': '蒂博·库尔图瓦', 'Virgil van Dijk': '维吉尔·范戴克',
-  'Alisson': '阿利松', 'Ederson': '埃德森', 'Rúben Dias': '鲁本·迪亚斯',
-  'Antonio Rüdiger': '安东尼奥·吕迪格', 'William Saliba': '威廉·萨利巴',
-  'Federico Valverde': '费德里科·巴尔韦德', 'Martin Ødegaard': '马丁·厄德高',
-  'Bruno Fernandes': '布鲁诺·费尔南德斯', 'Bernardo Silva': '贝尔纳多·席尔瓦',
-  'Bukayo Saka': '布卡约·萨卡', 'Phil Foden': '菲尔·福登', 'Jamal Musiala': '贾马尔·穆西亚拉',
-  'Florian Wirtz': '弗洛里安·维尔茨', 'Pedri': '佩德里', 'Gavi': '加维',
-  'Rodrygo': '罗德里戈', 'Antoine Griezmann': '安托万·格列兹曼',
-  'Victor Osimhen': '维克托·奥斯梅恩', 'Khvicha Kvaratskhelia': '赫维恰·克瓦拉茨赫利亚',
-  'Son Heung Min': '孙兴慜', 'Cristiano Ronaldo': '克里斯蒂亚诺·罗纳尔多',
-  'Lionel Messi': '利昂内尔·梅西', 'Neymar Jr': '内马尔', 'Declan Rice': '德克兰·赖斯',
-  'Joshua Kimmich': '约书亚·基米希', 'João Cancelo': '若昂·坎塞洛',
-  'Achraf Hakimi': '阿什拉夫·哈基米', 'Theo Hernández': '特奥·埃尔南德斯',
-  'Mike Maignan': '迈克·迈尼昂', 'Gianluigi Donnarumma': '詹路易吉·多纳鲁马',
-  'Marc-André ter Stegen': '马克-安德烈·特尔施特根', 'Cole Palmer': '科尔·帕尔默',
-  'Ousmane Dembélé': '奥斯曼·登贝莱', 'Raphinha': '拉菲尼亚', 'Lamine Yamal': '拉明·亚马尔',
-  'Alexander Isak': '亚历山大·伊萨克', 'Julián Álvarez': '胡利安·阿尔瓦雷斯',
-  'Nico Williams': '尼科·威廉斯', 'Désiré Doué': '德西雷·杜埃', 'Michael Olise': '迈克尔·奥利塞',
-  'Joško Gvardiol': '约什科·格瓦迪奥尔', 'Alessandro Bastoni': '亚历山德罗·巴斯托尼',
-  'Marquinhos': '马尔基尼奥斯', 'Gabriel': '加布里埃尔',
-  'Trent Alexander-Arnold': '特伦特·亚历山大·阿诺德', 'Andrew Robertson': '安德鲁·罗伯逊',
-  'Nuno Mendes': '努诺·门德斯', 'Dani Carvajal': '达尼·卡瓦哈尔',
+  'Alisson': '阿利�?, 'Ederson': '埃德�?, 'Rúben Dias': '鲁本·迪亚�?,
+  'Antonio Rüdiger': '安东尼奥·吕迪�?, 'William Saliba': '威廉·萨利�?,
+  'Federico Valverde': '费德里科·巴尔韦德', 'Martin Ødegaard': '马丁·厄德�?,
+  'Bruno Fernandes': '布鲁诺·费尔南德斯', 'Bernardo Silva': '贝尔纳多·席尔�?,
+  'Bukayo Saka': '布卡约·萨�?, 'Phil Foden': '菲尔·福登', 'Jamal Musiala': '贾马尔·穆西亚�?,
+  'Florian Wirtz': '弗洛里安·维尔�?, 'Pedri': '佩德�?, 'Gavi': '加维',
+  'Rodrygo': '罗德里戈', 'Antoine Griezmann': '安托万·格列兹�?,
+  'Victor Osimhen': '维克托·奥斯梅�?, 'Khvicha Kvaratskhelia': '赫维恰·克瓦拉茨赫利亚',
+  'Son Heung Min': '孙兴�?, 'Cristiano Ronaldo': '克里斯蒂亚诺·罗纳尔多',
+  'Lionel Messi': '利昂内尔·梅西', 'Neymar Jr': '内马�?, 'Declan Rice': '德克兰·赖�?,
+  'Joshua Kimmich': '约书亚·基米希', 'João Cancelo': '若昂·坎塞�?,
+  'Achraf Hakimi': '阿什拉夫·哈基�?, 'Theo Hernández': '特奥·埃尔南德�?,
+  'Mike Maignan': '迈克·迈尼�?, 'Gianluigi Donnarumma': '詹路易吉·多纳鲁马',
+  'Marc-André ter Stegen': '马克-安德烈·特尔施特根', 'Cole Palmer': '科尔·帕尔�?,
+  'Ousmane Dembélé': '奥斯曼·登贝莱', 'Raphinha': '拉菲尼亚', 'Lamine Yamal': '拉明·亚马�?,
+  'Alexander Isak': '亚历山大·伊萨�?, 'Julián Álvarez': '胡利安·阿尔瓦雷斯',
+  'Nico Williams': '尼科·威廉�?, 'Désiré Doué': '德西雷·杜�?, 'Michael Olise': '迈克尔·奥利塞',
+  'Joško Gvardiol': '约什科·格瓦迪奥尔', 'Alessandro Bastoni': '亚历山德罗·巴斯托�?,
+  'Marquinhos': '马尔基尼奥斯', 'Gabriel': '加布里埃�?,
+  'Trent Alexander-Arnold': '特伦特·亚历山大·阿诺德', 'Andrew Robertson': '安德鲁·罗伯�?,
+  'Nuno Mendes': '努诺·门德�?, 'Dani Carvajal': '达尼·卡瓦哈尔',
   'Alejandro Grimaldo': '亚历杭德罗·格里马尔多', 'Nicolò Barella': '尼科洛·巴雷拉',
-  'Frenkie de Jong': '弗兰基·德容', 'Alexis Mac Allister': '亚历克西斯·麦卡利斯特',
-  'Vitinho': '维蒂尼亚', 'Hakan Çalhanoğlu': '哈坎·恰尔汗奥卢',
+  'Frenkie de Jong': '弗兰基·德�?, 'Alexis Mac Allister': '亚历克西斯·麦卡利斯特',
+  'Vitinha': '维蒂尼亚', 'Hakan Çalhanoğlu': '哈坎·恰尔汗奥�?,
   'Aurélien Tchouaméni': '奥雷利安·楚阿梅尼', 'Eduardo Camavinga': '爱德华多·卡马文加'
 };
 
-// 简化的球员数据，用于 Cloudflare Workers
+// 简化的球员数据，用�?Cloudflare Workers
 const EMBEDDED_PLAYER_DATA = [
-  { id: 'mbappe', englishName: 'Kylian Mbappé', name: '姆巴佩', position: 'FWD', rating: 91, country: '法国', league: '法甲', club: '皇家马德里', detailedPosition: 'FWD', grade: 'S' },
-  { id: 'haaland', englishName: 'Erling Haaland', name: '哈兰德', position: 'FWD', rating: 91, country: '挪威', league: '英超', club: '曼城', detailedPosition: 'FWD', grade: 'S' },
-  { id: 'mbappe', englishName: 'Vinícius Júnior', name: '维尼修斯', position: 'FWD', rating: 90, country: '巴西', league: '西甲', club: '皇家马德里', detailedPosition: 'FWD', grade: 'S' },
-  { id: 'bellingham', englishName: 'Jude Bellingham', name: '贝林厄姆', position: 'MID', rating: 90, country: '英格兰', league: '西甲', club: '皇家马德里', detailedPosition: 'CAM', grade: 'S' },
-  { id: 'rodri', englishName: 'Rodri', name: '罗德里', position: 'MID', rating: 90, country: '西班牙', league: '英超', club: '曼城', detailedPosition: 'CDM', grade: 'S' },
-  { id: 'debruyne', englishName: 'Kevin De Bruyne', name: '德布劳内', position: 'MID', rating: 90, country: '比利时', league: '英超', club: '曼城', detailedPosition: 'CAM', grade: 'S' },
-  { id: 'vandijk', englishName: 'Virgil van Dijk', name: '范戴克', position: 'DEF', rating: 90, country: '荷兰', league: '英超', club: '利物浦', detailedPosition: 'CB', grade: 'S' },
-  { id: 'courtois', englishName: 'Thibaut Courtois', name: '库尔图瓦', position: 'GK', rating: 90, country: '比利时', league: '西甲', club: '皇家马德里', detailedPosition: 'GK', grade: 'S' },
+  { id: 'mbappe', englishName: 'Kylian Mbappé', name: '姆巴�?, position: 'FWD', rating: 91, country: '法国', league: '法甲', club: '皇家马德�?, detailedPosition: 'FWD', grade: 'S' },
+  { id: 'haaland', englishName: 'Erling Haaland', name: '哈兰�?, position: 'FWD', rating: 91, country: '挪威', league: '英超', club: '曼城', detailedPosition: 'FWD', grade: 'S' },
+  { id: 'vini_jr', englishName: 'Vini Jr.', name: '维尼修斯', position: 'FWD', rating: 90, country: '巴西', league: '西甲', club: '皇家马德�?, detailedPosition: 'LW', grade: 'S' },
+  { id: 'bellingham', englishName: 'Jude Bellingham', name: '贝林厄姆', position: 'MID', rating: 90, country: '英格�?, league: '西甲', club: '皇家马德�?, detailedPosition: 'CAM', grade: 'S' },
+  { id: 'rodri', englishName: 'Rodri', name: '罗德�?, position: 'MID', rating: 90, country: '西班�?, league: '英超', club: '曼城', detailedPosition: 'CDM', grade: 'S' },
+  { id: 'debruyne', englishName: 'Kevin De Bruyne', name: '德布劳内', position: 'MID', rating: 90, country: '比利�?, league: '英超', club: '曼城', detailedPosition: 'CAM', grade: 'S' },
+  { id: 'vandijk', englishName: 'Virgil van Dijk', name: '范戴�?, position: 'DEF', rating: 90, country: '荷兰', league: '英超', club: '利物�?, detailedPosition: 'CB', grade: 'S' },
+  { id: 'courtois', englishName: 'Thibaut Courtois', name: '库尔图瓦', position: 'GK', rating: 90, country: '比利�?, league: '西甲', club: '皇家马德�?, detailedPosition: 'GK', grade: 'S' },
 ];
 
 export function preparePlayers() {

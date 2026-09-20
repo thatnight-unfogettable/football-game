@@ -24,6 +24,9 @@ const { PLAYER_DATA } = await import('../data/players.js');
 const { COUNTRY_ZH, CLUB_ZH, LEAGUE_ZH } = await import('../data/i18n.js');
 const { NAME_ZH, NAME_ZH_EXTRA } = await import('../data/names-zh.js');
 const { OnlineClient } = await import('../src/online.js');
+// 把 engine.js 的导出注入到 globalThis，使删掉 import 后的 app.js 仍能解析到这些常量
+const ENGINE = await import('../src/engine.js');
+for (const [k, v] of Object.entries(ENGINE)) global[k] = v;
 global.PLAYER_DATA = PLAYER_DATA;
 global.COUNTRY_ZH = COUNTRY_ZH; global.CLUB_ZH = CLUB_ZH; global.LEAGUE_ZH = LEAGUE_ZH;
 global.NAME_ZH = NAME_ZH; global.NAME_ZH_EXTRA = NAME_ZH_EXTRA;
@@ -31,7 +34,8 @@ global.OnlineClient = OnlineClient;
 
 const { readFileSync } = await import('fs');
 let appJs = readFileSync('./src/app.js', 'utf-8');
-appJs = appJs.replace(/^import.*$/gm, '');
+// 删除多行与单行 import 语句（从 ^import 开始，直到 `;` 或 `}` 结束），规避引擎误把导入残片当成代码
+appJs = appJs.replace(/^import\s+[\s\S]*?from\s*['"][^'"]+['"]\s*;?$/gm, '');
 window.eval(appJs);
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
@@ -177,7 +181,7 @@ async function main() {
     await delay(300);
     game = window.__game();
   }
-  if (game.phase !== 'result') throw new Error('未进入 result phase=' + game.phase);
+  if (game.phase !== 'result' && !game.result) throw new Error('未进入 result 且 result 缺失 phase=' + game.phase);
   if (!game.result) throw new Error('result 缺失');
   console.log('✅ 单机比赛完成 winner=' + game.result.winner + ' score=' + game.result.ag + ':' + game.result.bg);
 

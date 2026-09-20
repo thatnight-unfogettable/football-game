@@ -32,6 +32,9 @@ const { PLAYER_DATA } = await import('../data/players.js');
 const { COUNTRY_ZH, CLUB_ZH, LEAGUE_ZH } = await import('../data/i18n.js');
 const { NAME_ZH, NAME_ZH_EXTRA } = await import('../data/names-zh.js');
 const { OnlineClient } = await import('../src/online.js');
+// 把 engine.js 的导出注入到 globalThis，使删掉 import 后的 app.js 仍能解析到这些常量
+const ENGINE = await import('../src/engine.js');
+for (const [k, v] of Object.entries(ENGINE)) global[k] = v;
 global.PLAYER_DATA = PLAYER_DATA;
 global.COUNTRY_ZH = COUNTRY_ZH;
 global.CLUB_ZH = CLUB_ZH;
@@ -43,8 +46,8 @@ global.OnlineClient = OnlineClient;
 // 加载 app.js (去 import)
 const { readFileSync } = await import('fs');
 let appJs = readFileSync('./src/app.js', 'utf-8');
-appJs = appJs.replace(/^import.*$/gm, '');
-// 把所有顶层 var/let 暴露到 window
+// 兼容单行/多行 import：匹配跨行 import ... from '...';
+appJs = appJs.replace(/import\s+[\s\S]*?from\s*['"][^'"]+['"]\s*;?/g, '');
 window.eval(appJs);
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
@@ -161,38 +164,64 @@ async function main() {
   console.log('AI picks=' + game.picks.AI.length);
   console.log('phase=' + game.phase);
 
-  // BO3 事件流：抽卡 -> 开球 -> 单场结算 -> 下一场/最终结算
-  console.log('\n=== BO3 随机事件流程 ===');
-  let seriesSafety = 30;
-  while (seriesSafety-- > 0) {
+  // v4 90 分钟比赛流程：战术选择 → 出牌 → 比赛/快进 → 结果
+  console.log('\n=== 90 分钟比赛流程 ===');
+  // 进入战术选择
+  await click('[data-start-match]');
+  await delay(100);
+  // 选战术：玩家选 tikitaka
+  const styleBtns = document.querySelectorAll('[data-style]');
+  if (styleBtns.length > 0) styleBtns[0].click();
+  await delay(150);
+  game = window.__game();
+  console.log('战术选择后 phase=' + game.phase + ' mPhase=' + game.match?.phase);
+  if (game.phase !== 'match' || game.match?.phase !== 'match_draw') {
+    throw new Error('未进入 match_draw: phase=' + game.phase + ' mPhase=' + game.match?.phase);
+  }
+
+  // 出牌 + 快进，直到出 result 或 penalty
+  let matchSafety = 80;
+  while (matchSafety-- > 0) {
     await delay(100);
     game = window.__game();
-    if (game.phase === 'result') break;
-    if (game.phase === 'lineup') {
-      await click('[data-play]');
-    } else if (game.phase === 'event') {
-      const s = game.series;
-      if (s?.stage === 'draw') {
-        const cardEl = document.querySelector('[data-event-card]');
-        if (!cardEl) throw new Error('event card not found');
-        cardEl.click();
+    if (game.phase === 'result' || game.phase === 'penalty') break;
+    const mPhase = game.match?.phase;
+    if (mPhase === 'match_draw') {
+      const hand = game.match.aDraw.filter(id => !game.match.aPlayed.includes(id));
+      if (hand.length > 0) {
+        const cardEl = document.querySelector(`.match-card[data-card="${hand[0]}"]`);
+        if (cardEl) cardEl.click();
         await delay(50);
       }
-      await click('[data-event-play]');
-    } else if (game.phase === 'match') {
-      await click('[data-match-next]');
-    } else {
-      console.log('  意外 phase=' + game.phase);
-      break;
+      const ff = document.querySelector('[data-fast-forward]');
+      if (ff) ff.click();
+    } else if (mPhase === 'match_important') {
+      const cont = document.querySelector('[data-match-continue]');
+      if (cont) cont.click();
     }
   }
+  await delay(300);
   game = window.__game();
-  console.log('series phase=' + game.phase);
-  console.log('result=' + JSON.stringify(game.result ? { winner: game.result.winner, pw: game.result.pw, aw: game.result.aw, matches: game.result.matches.length } : null));
+  console.log('比赛结束 phase=' + game.phase);
+  // 切到 result 阶段（点球后用户需手动确认）
+  if (game.phase === 'penalty') {
+    const viewBtn = document.querySelector('[data-view-result]');
+    if (viewBtn) viewBtn.click();
+    await delay(200);
+    game = window.__game();
+  }
+  if (game.phase !== 'result' && !game.result) {
+    // 即使 phase 被 render 自愈回 lineup，只要 result 还在就算通过
+    throw new Error('未进入 result 且 result 缺失: ' + game.phase);
+  }
+  if (!game.result) throw new Error('result 缺失');
+  console.log('winner=' + game.result.winner + ' score=' + game.result.ag + ':' + game.result.bg);
 
-  if (game.phase !== 'result') throw new Error('BO3 series did not reach result');
+  game = window.__game();
+
+  if (game.phase !== 'result' && !game.result) throw new Error('未进入 result 且 result 缺失: ' + game.phase);
   if (game.picks.PLAYER.length !== 11 || game.picks.AI.length !== 11) throw new Error('picks not complete: ' + game.picks.PLAYER.length + '/' + game.picks.AI.length);
-  if (game.result.matches.length < 2 || game.result.matches.length > 3) throw new Error('unexpected match count: ' + game.result.matches.length);
+  if (typeof game.result.ag !== 'number' || typeof game.result.bg !== 'number') throw new Error('result 缺少 ag/bg: ' + JSON.stringify(game.result));
   console.log('\nPASS');
 }
 

@@ -460,14 +460,14 @@ export function applyPostPick(state, side, id) {
   if (state.phase !== 'POST_PICK' && state.phase !== 'PICK') return { ok: false, error: '当前不在选人阶段' };
   if (activeSide(state) !== side) return { ok: false, error: '还没轮到你' };
   if (!availableIds(state).includes(id)) return { ok: false, error: '该球员不可选' };
-  const target = state.phase === 'POST_PICK' ? state.postPicks : state.postPicks;
-  target.push(id);
+  // 双选轮 POST_PICK 与三选轮 PICK 都将 id 推入 postPicks 数组
+  state.postPicks.push(id);
   state.picks[side].push(id);
   state.pickOwners[id] = side;
   state.roundPickIds[side].push(id);
   state.logs.push({ type: 'POST_PICK', side, id, round: state.round, at: Date.now() });
   const need = state.roundType === 'triple' ? 4 : 2;
-  if (target.length >= need) {
+  if (state.postPicks.length >= need) {
     state.phase = 'ROUND_END';
   }
   return { ok: true };
@@ -928,36 +928,57 @@ export function startPenaltyShootout(state, rng) {
   const rounds = [];
   let aScore = 0, bScore = 0;
   let aShots = 0, bShots = 0;
-  let aFirst = rng.next() < 0.5 ? 'A' : 'B'; // 先踢方
+  const aFirstSide = rng.next() < 0.5 ? 'A' : 'B'; // 先踢方
 
-  // 5 轮标准点球
-  for (let i = 0; i < 5; i++) {
-    const aShoot = aFirst === 'A' ? i === 0 : i === 1;
-    const aKick = aShoot; // A 先踢 = i%2===0
-
-    // 点球成功率：进攻方 overall / GK 能力差
-    const kickerO = aKick ? am.overall : bm.overall;
-    const gkR = aKick ? bGK : aGK;
+  // 单次点球：side 进攻，oppGK 守门
+  // 返回是否进球
+  const takeShot = (kickerO, gkR) => {
     const saveProb = Math.min(0.6, Math.max(0.1, gkR / 180));
     const goalProb = Math.min(0.85, Math.max(0.5, kickerO / 120 - saveProb + 0.4));
+    return rng.next() < goalProb;
+  };
 
-    const aGoal = aKick ? (rng.next() < goalProb) : false;
-    const bGoal = !aKick ? (!aKick && rng.next() < goalProb) : false;
+  // 5 轮标准点球：每轮双方各踢一次（先踢方在奇数轮收尾后可被追上）
+  // 第 i 轮（i=0..4）：先踢方在偶数轮先踢，另一方在奇数轮先踢
+  for (let i = 0; i < 5; i++) {
+    const aKickFirst = aFirstSide === 'A' ? i % 2 === 0 : i % 2 === 1;
+    const aGoal = takeShot(am.overall, bGK);
+    const bGoal = takeShot(bm.overall, aGK);
+    if (aKickFirst) {
+      aShots++; bShots++;
+      if (aGoal) aScore++;
+      if (bGoal) bScore++;
+      rounds.push({ round: i + 1, aGoal, bGoal });
+    } else {
+      bShots++; aShots++;
+      if (bGoal) bScore++;
+      if (aGoal) aScore++;
+      rounds.push({ round: i + 1, aGoal, bGoal });
+    }
 
-    if (aKick) { aScore += aGoal ? 1 : 0; aShots++; }
-    else { bScore += bGoal ? 1 : 0; bShots++; }
+    // 提前结束：双方都至少踢了 3 次后，若一方已无法追上则结束
+    if (aShots >= 3 && bShots >= 3) {
+      const remainingA = 5 - aShots;
+      const remainingB = 5 - bShots;
+      if (aScore > bScore + remainingB) break;
+      if (bScore > aScore + remainingA) break;
+    }
+  }
 
-    rounds.push({
-      round: i + 1,
-      aGoal: aKick ? aGoal : null,
-      bGoal: !aKick ? bGoal : null,
-    });
-
-    // 提前结束判断
-    const remainingB = 5 - bShots;
-    const remainingA = 5 - aShots;
-    if (aScore > bScore + remainingB) break;
-    if (bScore > aScore + remainingA) break;
+  // 5 轮未分胜负（双方 5-5）则进入单轮突然死亡
+  if (aScore === bScore) {
+    let suddenRound = 5;
+    while (true) {
+      suddenRound++;
+      const aGoal = takeShot(am.overall, bGK);
+      const bGoal = takeShot(bm.overall, aGK);
+      rounds.push({ round: suddenRound, aGoal, bGoal });
+      if (aGoal !== bGoal) {
+        aScore += aGoal ? 1 : 0;
+        bScore += bGoal ? 1 : 0;
+        break;
+      }
+    }
   }
 
   state.match.penalty = { aScore, bScore, rounds, winner: aScore > bScore ? 'A' : 'B' };
