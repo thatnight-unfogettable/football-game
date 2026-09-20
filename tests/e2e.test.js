@@ -10,7 +10,7 @@ function mk(name) {
   return {
     ws, name, msgs,
     open: () => new Promise((res) => { if (ws.readyState === 1) return res(); ws.once('open', res); }),
-    send(type, payload = {}) { this.ws.send(JSON.stringify({ type, payload, protocol: 3 })); },
+    send(type, payload = {}) { this.ws.send(JSON.stringify({ type, payload, protocol: 4 })); },
     wait(ms) { return new Promise(r => setTimeout(r, ms)); },
     phase() { const arr = this.msgs.filter(m => m.type === 'STATE'); return arr.length ? (arr[arr.length - 1].payload?.game?.phase || '') : ''; },
     st() { const arr = this.msgs.filter(m => m.type === 'STATE'); return arr.length ? arr[arr.length - 1].payload : null; },

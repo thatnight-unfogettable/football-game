@@ -661,13 +661,11 @@ function playCard(cardId) {
   // 玩家选择这张牌
   m.aChoice = cardId;
   // AI 选牌
-  const hand = m.aDraw.filter(id => !m.aPlayed.includes(id));
   const aiHand = m.bDraw.filter(id => !m.bPlayed.includes(id));
   const aiChoice = aiPickMatchCard(aiRng(), aiHand);
   m.bChoice = aiChoice;
-  m.phase = 'reveal';
 
-  // 即时牌推进到对应分钟；修正牌进 pending
+  // 即时牌推进到对应分钟；修正牌进 pending（由 engine 统一处理 advanceToMinute 内播报）
   if (cardId) {
     const card = EVENT_BY_ID[cardId];
     if (card?.type === 'instant') {
@@ -689,23 +687,36 @@ function playCard(cardId) {
     }
   }
 
-  // 即时牌得分结算（已在 advanceToMinute 里处理了）
-  // 强制进入重要模式
-  m.mode = 'important';
-  m.modeStartMin = m.tickMinute;
+  // 把已出牌压入已出列表（仅在 aChoice 仍有时）
+  if (m.aChoice) m.aPlayed.push(m.aChoice);
+  if (m.bChoice) m.bPlayed.push(m.bChoice);
+  m.aChoice = null;
+  m.bChoice = null;
 
-  // 记录事件
-  const narrateCard = (side, id) => {
-    if (!id) return null;
-    const card = EVENT_BY_ID[id];
-    return card?.narrate || card?.name || id;
-  };
-  const playerNarr = narrateCard('PLAYER', cardId);
-  const aiNarr = narrateCard('AI', aiChoice);
-  if (playerNarr || aiNarr) {
+  // engine.advanceToMinute 已经把 narrate 推入 importantEvents；这里只需要补玩家角度的"标识"
+  // 用 'A' / 'B' 标识以和后端 / 在线对战对齐
+  const playerCard = cardId ? EVENT_BY_ID[cardId] : null;
+  const aiCard = aiChoice ? EVENT_BY_ID[aiChoice] : null;
+  if (playerCard?.type === 'modifier' || aiCard?.type === 'modifier') {
     m.importantEvents = m.importantEvents || [];
-    if (playerNarr) m.importantEvents.push({ tick: m.tickMinute, type: 'instant', text: playerNarr, side: 'PLAYER', cardId });
-    if (aiNarr) m.importantEvents.push({ tick: m.tickMinute, type: 'instant', text: aiNarr, side: 'AI', cardId });
+    if (playerCard?.type === 'modifier') m.importantEvents.push({ tick: m.tickMinute, type: 'modifier_play', text: `你打出：${playerCard.emoji} ${playerCard.name}`, side: 'A', cardId: cardId });
+    if (aiCard?.type === 'modifier') m.importantEvents.push({ tick: m.tickMinute, type: 'modifier_play', text: `AI 打出：${aiCard.emoji} ${aiCard.name}`, side: 'B', cardId: aiChoice });
+  }
+
+  // 比赛结束后自动结算
+  if (m.tickMinute >= 90) {
+    advanceToMinute(game, aiRng(), 90);
+    finishMatch90(game);
+    if (game.phase === 'penalty') {
+      startPenaltyShootout(game, aiRng());
+      game.phase = 'penalty';
+    } else {
+      resolveMatch90(game);
+    }
+    const record = buildHistoryRecord();
+    storeHistory(record);
+    localStorage.removeItem(ACTIVE_KEY);
+    beep(game.result?.winner === 'PLAYER' ? 'win' : 'lose');
   }
 
   beep('select');
@@ -714,22 +725,19 @@ function playCard(cardId) {
 
 // ─── 快进/推进（重要模式结束后自动继续）───
 function advanceMatch() {
-  if (game.phase !== 'match' || game.match?.phase !== 'match_important') return;
+  if (!game.match) return;
   const m = game.match;
+  // 快进 5 分钟并自动推进
   m.mode = 'fast';
   m.modeStartMin = m.tickMinute;
 
-  // 快进到下一个关键事件（下一个即时牌 minute 或下一个进球概率高峰）
-  // 简化策略：快进 5 分钟 + 每分钟跑 Bernoulli
   const targetMin = Math.min(m.tickMinute + 5, 90);
   advanceToMinute(game, aiRng(), targetMin);
   m.tickMinute = targetMin;
 
-  // 快进后自动切回重要（如果还有手牌且未到90分钟）
+  // 快进后看是否到 90 分钟
   if (m.tickMinute >= 90) {
-    // 比赛结束
     advanceToMinute(game, aiRng(), 90);
-    m.phase = 'finished';
     finishMatch90(game);
     if (game.phase === 'penalty') {
       startPenaltyShootout(game, aiRng());

@@ -338,7 +338,7 @@ export function newGameState(settings = {}) {
     roundType: rounds[0].type,
     roundHint: rounds[0].hint,
     phase: 'ORDER',          // BP: ORDER | PRE_PICK | BAN | POST_PICK | PICK | ROUND_END | LINEUP
-                               // 比赛: TACTICAL_PICK → match(draw/reveal/important/fast/finished) | penalty | RESULT
+                               // 比赛: TACTICAL_PICK → match_draw | match_important | match_reveal | match_finished | penalty | RESULT
     subPhase: null,
     firstPicker: null,
     firstBan: null,
@@ -377,6 +377,15 @@ export function activeSide(state) {
   }
   if (state.phase === 'BAN') {
     return state.banTurn % 2 === 0 ? state.firstBan : (state.firstBan === 'A' ? 'B' : 'A');
+  }
+  if (state.phase === 'tactical_pick') {
+    // 双方都还没选：先 A 后 B 提示；任一方未选则轮到对方
+    if (!state.match?.aStyle) return 'A';
+    if (!state.match?.bStyle) return 'B';
+    return null;
+  }
+  if (state.phase === 'match' && state.match?.phase === 'match_important') {
+    return null; // 等待双方都按继续
   }
   return null;
 }
@@ -646,6 +655,10 @@ export function startMatch90(state, rng) {
   usedIds.push(...aDraw.map(c => c.id));
   const bDraw = drawMatchCards(rng, 3, usedIds);
 
+  // 保留之前已设置的战术风格（避免被默认值 null 覆盖）
+  const prevAStyle = state.match?.aStyle || null;
+  const prevBStyle = state.match?.bStyle || null;
+
   state.match = {
     // ── 基础状态 ──
     tickMinute: 0,         // 当前分钟 0-90+
@@ -661,7 +674,7 @@ export function startMatch90(state, rng) {
     aPending: [], bPending: [],     // 待激活的修正牌
 
     // ── 战术风格（实时） ──
-    aStyle: null, bStyle: null,
+    aStyle: prevAStyle, bStyle: prevBStyle,
 
     // ── 重要/快进窗口 ──
     modeStartMin: 0,       // 当前 mode 起始分钟
@@ -749,6 +762,7 @@ export function commitMatchCards(state, cards) {
   // 进入重要模式（系统自动）
   m.mode = 'important';
   m.modeStartMin = m.tickMinute;
+  m.phase = 'match_important';
 }
 
 // ─── 每分钟 Bernoulli 结算 ───
@@ -796,6 +810,7 @@ export function advanceToMinute(state, rng, targetMinute) {
   }
   m.tickMinute = Math.min(targetMinute, 90);
 
+  let triggered = false;
   // 即时牌触发（只触发 <= targetMinute 的）
   const trigger = (side, cardId) => {
     if (!cardId) return;
@@ -803,6 +818,7 @@ export function advanceToMinute(state, rng, targetMinute) {
     if (!card || card.type !== 'instant') return;
     // 只在 tickMinute 恰好等于 minute 时触发
     if (card.minute === m.tickMinute) {
+      triggered = true;
       if (card.instant?.goals) {
         if (side === 'A') m.ag += card.instant.goals;
         else m.bg += card.instant.goals;
@@ -831,6 +847,7 @@ export function advanceToMinute(state, rng, targetMinute) {
     const pool = side === 'A' ? m.aPending : m.bPending;
     for (const card of pool) {
       if (prev < card.windowStart && next >= card.windowStart) {
+        triggered = true;
         m.importantEvents.push({
           tick: m.tickMinute,
           type: 'modifier_on',
@@ -847,11 +864,13 @@ export function advanceToMinute(state, rng, targetMinute) {
   trigger('A', m.aChoice);
   trigger('B', m.bChoice);
 
-  m.aPlayed.push(m.aChoice);
-  m.bPlayed.push(m.bChoice);
+  if (m.aChoice) m.aPlayed.push(m.aChoice);
+  if (m.bChoice) m.bPlayed.push(m.bChoice);
   m.aChoice = null;
   m.bChoice = null;
-  m.phase = 'match_draw';
+  // 进入重要模式等双方确认；普通推进仍保留 match_draw
+  m.phase = triggered ? 'match_important' : 'match_draw';
+  m.mode = triggered ? 'important' : 'fast';
 
   // 判定是否结束
   if (m.tickMinute >= 90) {
@@ -864,6 +883,7 @@ export function advanceToMinute(state, rng, targetMinute) {
     );
     if (maxEnd > 90) {
       m.tickMinute = maxEnd; // 延到最晚修正牌窗口结束
+      m.phase = triggered ? 'match_important' : 'match_draw';
     } else {
       m.phase = 'finished';
     }

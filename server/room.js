@@ -130,20 +130,26 @@ function onTimeout(room) {
   } else if (g.phase === 'POST_PICK' || g.phase === 'PICK') {
     const id = chooseAuto(room, side, 'pick');
     if (id) handlePostPick(room, side, id, true);
-  } else if (g.phase === 'match' || g.phase === 'match_draw') {
+  } else if (g.phase === 'match') {
     // 比赛出牌：超时自动 AI 选
     const m = g.match;
-    const hand = side === 'A' ? m.aDraw.filter(id => !m.aPlayed.includes(id)) : m.bDraw.filter(id => !m.bPlayed.includes(id));
-    if (!hand.length) {
-      // 没手牌就快进
-      handleFastForward(room, side);
-    } else {
-      const cardId = aiPickMatchCard(room.rng, hand);
-      handlePlayCard(room, side, cardId);
+    if (!m) return;
+    if (m.phase === 'match_important') {
+      // 重要模式超时 → 自动按继续
+      handleMatchContinue(room, side === 'A' ? 'B' : 'A');
+      handleMatchContinue(room, side);
+    } else if (m.phase === 'match_draw') {
+      const hand = side === 'A' ? m.aDraw.filter(id => !m.aPlayed.includes(id)) : m.bDraw.filter(id => !m.bPlayed.includes(id));
+      if (!hand.length) {
+        // 没手牌就快进
+        handleFastForward(room, side);
+      } else {
+        const cardId = aiPickMatchCard(room.rng, hand);
+        handlePlayCard(room, side, cardId);
+      }
     }
   } else if (g.phase === 'tactical_pick') {
     // 战术超时：AI 自动选 longball
-    const my = side === 'A' ? 'B' : 'A';
     if (!g.match) g.match = {};
     if (side === 'A' && !g.match.aStyle) handleSetStyle(room, 'A', 'longball');
     else if (side === 'B' && !g.match.bStyle) handleSetStyle(room, 'B', 'longball');
@@ -327,19 +333,11 @@ export function handlePlayCard(room, side, cardId) {
         (s === 'A' ? m.aPending : m.bPending).push(card);
       }
     });
-    m.mode = 'important';
-    m.modeStartMin = m.tickMinute;
-    [m.aChoice, m.bChoice].forEach((id, i) => {
-      const s = i === 0 ? 'A' : 'B';
-      if (!id) return;
-      const card = EVENT_BY_ID[id];
-      if (card) m.importantEvents.push({ tick: m.tickMinute, type: 'instant', text: card.narrate || card.name, side: s, cardId: id });
-    });
-    m.aPlayed.push(m.aChoice);
-    m.bPlayed.push(m.bChoice);
+    // 修正牌触发的播报在 advanceToMinute 里统一处理，这里不再重复 push
+    if (m.aChoice) m.aPlayed.push(m.aChoice);
+    if (m.bChoice) m.bPlayed.push(m.bChoice);
     m.aChoice = null;
     m.bChoice = null;
-    m.phase = 'match_draw';
 
     if (m.tickMinute >= 90) {
       advanceToMinute(room.game, room.rng, 90);

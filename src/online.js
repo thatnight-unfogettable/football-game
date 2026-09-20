@@ -1,4 +1,4 @@
-const PROTOCOL = 3;
+const PROTOCOL = 4;
 const TOKEN_KEY = 'bp-online-token';
 const ROOM_KEY = 'bp-online-room';
 const NICKNAME_KEY = 'bp-online-nickname';
