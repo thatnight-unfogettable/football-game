@@ -768,8 +768,12 @@ export function commitMatchCards(state, cards) {
 // ─── 每分钟 Bernoulli 结算 ───
 function tickMinuteBernoulli(state, rng, tick) {
   const m = state.match;
-  const am = lineupMetrics(state.lineup.A, state.players);
-  const bm = lineupMetrics(state.lineup.B, state.players);
+  // 兼容 app.js 的 PLAYER/AI 命名（app.js 用 PLAYER/AI，engine.js 其余位置用 A/B）
+  const aLineup = state.lineup.A || state.lineup.PLAYER;
+  const bLineup = state.lineup.B || state.lineup.AI;
+  if (!aLineup || !bLineup) return; // lineup 未就绪，跳过该分钟
+  const am = lineupMetrics(aLineup, state.players);
+  const bm = lineupMetrics(bLineup, state.players);
 
   const aStyleBonus = stylePhaseBonus(m.aStyle, tick);
   const bStyleBonus = stylePhaseBonus(m.bStyle, tick);
@@ -911,11 +915,14 @@ export function getMatchSnapshot(state) {
 
 // ─── 点球大战 ───
 export function startPenaltyShootout(state, rng) {
-  const am = lineupMetrics(state.lineup.A, state.players);
-  const bm = lineupMetrics(state.lineup.B, state.players);
+  // 兼容 PLAYER/AI 命名
+  const aLineup = state.lineup.A || state.lineup.PLAYER;
+  const bLineup = state.lineup.B || state.lineup.AI;
+  const am = aLineup ? lineupMetrics(aLineup, state.players) : { overall: 0 };
+  const bm = bLineup ? lineupMetrics(bLineup, state.players) : { overall: 0 };
   // GK 能力用 GK 位的 rating
-  const aGK = state.lineup.A?.GK ? (state.lineup.A.GK === COURTOIS.id ? 90 : (state.players.find(p => p.id === state.lineup.A.GK)?.rating || 85)) : 85;
-  const bGK = state.lineup.B?.GK ? (state.lineup.B.GK === COURTOIS.id ? 90 : (state.players.find(p => p.id === state.lineup.B.GK)?.rating || 85)) : 85;
+  const aGK = aLineup?.GK ? (aLineup.GK === COURTOIS.id ? 90 : (state.players.find(p => p.id === aLineup.GK)?.rating || 85)) : 85;
+  const bGK = bLineup?.GK ? (bLineup.GK === COURTOIS.id ? 90 : (state.players.find(p => p.id === bLineup.GK)?.rating || 85)) : 85;
 
   const rounds = [];
   let aScore = 0, bScore = 0;
@@ -970,8 +977,11 @@ export function finishMatch90(state) {
 // ─── 最终结算 ───
 export function resolveMatch90(state) {
   const m = state.match;
-  const am = lineupMetrics(state.lineup.A, state.players);
-  const bm = lineupMetrics(state.lineup.B, state.players);
+  // 兼容 PLAYER/AI 命名
+  const aLineup = state.lineup.A || state.lineup.PLAYER;
+  const bLineup = state.lineup.B || state.lineup.AI;
+  const am = lineupMetrics(aLineup, state.players);
+  const bm = lineupMetrics(bLineup, state.players);
 
   let winner = 'DRAW';
   if (m.penalty) {
@@ -985,7 +995,7 @@ export function resolveMatch90(state) {
     winner = am.overall > bm.overall ? 'A' : am.overall < bm.overall ? 'B' : (am.chemistry >= bm.chemistry ? 'A' : 'B');
   }
 
-  const winSide = winner === 'A' ? state.lineup.A : state.lineup.B;
+  const winSide = winner === 'A' ? aLineup : bLineup;
   const wm = winner === 'A' ? am : bm;
   const mvp = SLOT_ORDER
     .map(slot => winSide[slot] ? (winSide[slot] === COURTOIS.id ? COURTOIS : state.players.find(p => p.id === winSide[slot])) : null)

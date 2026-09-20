@@ -573,7 +573,21 @@ function previewChemistryDelta(side, candidateId) {
   const preview = lineupMetrics(assignToSlots([...game.picks[side], candidateId]));
   return Math.round((preview.chemistry - currentMetrics(side).chemistry) * 10) / 10;
 }
-function finalizeLineups() { game.lineup.PLAYER = bestAssignment(game.picks.PLAYER); game.lineup.AI = bestAssignment(game.picks.AI); game.phase = 'lineup'; game.screen = 'lineup'; snapshot('阵容自动排布'); save(); render(); }
+// 同步设置 lineup.A / lineup.B（engine.js 的比赛 tickMinuteBernoulli 等使用 A/B 键名）。
+// 保留 PLAYER/AI 兼容前端其余渲染逻辑。
+function finalizeLineups() {
+  const playerAssignment = bestAssignment(game.picks.PLAYER);
+  const aiAssignment = bestAssignment(game.picks.AI);
+  game.lineup.PLAYER = playerAssignment;
+  game.lineup.AI = aiAssignment;
+  game.lineup.A = playerAssignment;
+  game.lineup.B = aiAssignment;
+  game.phase = 'lineup';
+  game.screen = 'lineup';
+  snapshot('阵容自动排布');
+  save();
+  render();
+}
 function assignToSlots(picks) {
   // BP 阶段：根据已选球员动态分配至 4-3-3 阵型 slot
   // picks 中始终包含 COURTOIS，GK 固定给库尔图瓦
@@ -1405,13 +1419,23 @@ function render() {
         // bestAssignment 抛错时仍强制推进到 lineup 阶段，避免 UI 卡住
         game.phase = 'lineup';
         game.screen = 'lineup';
-        game.lineup.PLAYER = game.lineup.PLAYER || { GK: COURTOIS.id };
-        game.lineup.AI = game.lineup.AI || { GK: COURTOIS.id };
-        if (!game.lineup.PLAYER.GK) game.lineup.PLAYER.GK = COURTOIS.id;
-        if (!game.lineup.AI.GK) game.lineup.AI.GK = COURTOIS.id;
+        // 同时维护 PLAYER/AI 和 A/B 两套键名（A/B 是 engine.js 比赛逻辑用的）
+        for (const side of ['PLAYER', 'AI']) {
+          const other = side === 'PLAYER' ? 'A' : 'B';
+          game.lineup[side] = game.lineup[side] || { GK: COURTOIS.id };
+          game.lineup[other] = game.lineup[other] || { GK: COURTOIS.id };
+        }
+        for (const side of ['PLAYER', 'AI']) {
+          if (!game.lineup[side].GK) game.lineup[side].GK = COURTOIS.id;
+        }
         for (const slot of SLOT_ORDER) {
           if (!game.lineup.PLAYER[slot]) game.lineup.PLAYER[slot] = game.picks.PLAYER[0] || COURTOIS.id;
           if (!game.lineup.AI[slot]) game.lineup.AI[slot] = game.picks.AI[0] || COURTOIS.id;
+          // 镜像到 A/B 供 engine.js 比赛逻辑使用
+          game.lineup.A = game.lineup.A || {};
+          game.lineup.B = game.lineup.B || {};
+          if (!game.lineup.A[slot]) game.lineup.A[slot] = game.lineup.PLAYER[slot];
+          if (!game.lineup.B[slot]) game.lineup.B[slot] = game.lineup.AI[slot];
         }
         save();
       }
