@@ -46,6 +46,7 @@ export function createRoom(code) {
     history: [],
     pending: null,              // 当前等待的输入：'ORDER'|'PRE_PICK'|'BAN'|'POST_PICK'|'EVENT_CARD'|'MATCH_PLAY'|'CONTINUE'
     forfeit: null,
+    startTimer: null,           // 双方到齐后自动开赛的倒计时句柄
   };
 }
 
@@ -166,6 +167,22 @@ export function handleJoin(room, ws, nickname) {
   room.players.B = { nickname, ready: false, ws, session: ws.session, continueReady: false, lineupReady: false };
   ws.room = room.code;
   ws.side = 'B';
+}
+
+// 双方都成功上线后，自动开始 1.5 秒倒计时开赛
+export function handleAutoStart(room) {
+  if (room.status !== 'lobby') return;
+  if (!bothConnected(room)) return;
+  // 已经启动过倒计时就不再启动
+  if (room.startTimer) return;
+  console.log(`[room] ${room.code} full, auto-start in 1.5s`);
+  room.startTimer = setTimeout(() => {
+    room.startTimer = null;
+    if (room.status !== 'lobby') return;
+    if (!bothConnected(room)) return;
+    startMatch(room);
+    broadcast(room);
+  }, 1500);
 }
 
 export function handleReady(room, side, ready) {

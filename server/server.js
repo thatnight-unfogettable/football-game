@@ -18,6 +18,7 @@ import {
   handleCreate,
   handleJoin,
   handleReady,
+  handleAutoStart,
   handleOrder,
   handlePrePick,
   handlePostPick,
@@ -275,6 +276,7 @@ function doJoin(ws, p) {
   handleJoin(room, ws, p.nickname);
   send(ws, 'SESSION', { code: room.code, side: 'B', token: ws.session });
   broadcast(room, 'STATE');
+  handleAutoStart(room);
   console.log(`[room] joined ${room.code}`);
 }
 
@@ -290,6 +292,7 @@ function doReconnect(ws, p) {
   ws.room = room.code; ws.side = side;
   send(ws, 'SESSION', { code, side, token: session, reconnected: true });
   broadcast(room, 'STATE');
+  handleAutoStart(room);
   console.log(`[room] reconnected ${code} ${side}`);
 }
 

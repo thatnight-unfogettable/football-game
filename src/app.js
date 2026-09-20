@@ -1300,7 +1300,14 @@ function onlineRoom(){
         </div>
         ${players.B ? `<div class="player-status ${players.B.connected ? 'connected' : 'waiting'}"><span class="status-dot"></span><span class="player-name">${esc(players.B.nickname)}</span><span class="player-role">访客</span></div>` : `<div class="player-status waiting"><span class="status-dot blink"></span><span class="player-name">等待加入...</span></div>`}
       </div>
-      <div class="wait-actions">${players.B ? '<p class="opponent-joined">好友已加入！即将开始...</p>' : ''}<button data-online-leave>离开房间</button></div>
+      <div class="wait-actions">
+        ${players.B
+          ? (room.status === 'lobby'
+              ? '<p class="opponent-joined">好友已加入 · 即将开始…</p>'
+              : '<p class="opponent-joined">对局进行中</p>')
+          : ''}
+        <button data-online-leave>离开房间</button>
+      </div>
     </div>`;
   }
 
