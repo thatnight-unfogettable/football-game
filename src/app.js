@@ -487,7 +487,7 @@ function bestAssignment(ids) {
   const slots = SLOT_ORDER.filter(s => s !== 'GK');
   const byLine = { FWD: slots.slice(0, 3), MID: slots.slice(3, 6), DEF: slots.slice(6, 10) };
   const result = { GK: COURTOIS.id };
-  const used = new Set();
+  const used = new Set([COURTOIS.id]);
   for (const [line, lineSlots] of Object.entries(byLine)) {
     const pool = cards.filter(p => p.position === line && !used.has(p.id));
     const remaining = [...pool];
@@ -525,7 +525,7 @@ function lineupMetrics(assignment) {
   // paper: 0-100 制
   const paper = lineAverage('GK')*.1 + lineAverage('DEF')*.3 + lineAverage('MID')*.3 + lineAverage('FWD')*.3;
   const nonGk = entries.filter(x => x.slot !== 'GK');
-  const slotFit = nonGk.reduce((s,x) => s + x.fit, 0) / 10 * 32;
+  const slotFit = nonGk.length > 0 ? (nonGk.reduce((s,x) => s + x.fit, 0) / Math.min(nonGk.length, 10)) * 32 : 0;
   const roles = {FWD:['LW','ST','RW'], MID:['CM1','CDM','CM2'], DEF:['LB','CB1','CB2','RB']};
   let template = 0;
   Object.values(roles).forEach(slots => {
@@ -1193,7 +1193,7 @@ function onlineMetrics(ids){
   const assignment=onlineAssignment(ids),entries=SLOT_ORDER.map(slot=>({slot,p:onlinePlayer(assignment[slot]),fit:roleFit(onlinePlayer(assignment[slot]),slot)}));
   const lineAverage=line=>{const rows=entries.filter(x=>x.p?.position===line);return rows.length?rows.reduce((sum,x)=>sum+x.p.rating*x.fit,0)/rows.length:0;};
   const paper=lineAverage('GK')*.1+lineAverage('DEF')*.3+lineAverage('MID')*.3+lineAverage('FWD')*.3;
-  const nonGk=entries.filter(x=>x.slot!=='GK'&&x.p);const slotFit=nonGk.reduce((sum,x)=>sum+x.fit,0)/10*32;
+  const nonGk=entries.filter(x=>x.slot!=='GK'&&x.p);const slotFit=nonGk.length>0?(nonGk.reduce((sum,x)=>sum+x.fit,0)/Math.min(nonGk.length,10))*32:0;
   const roles={FWD:['LW','ST','RW'],MID:['CM1','CDM','CM2'],DEF:['LB','CB1','CB2','RB']};let template=0;Object.values(roles).forEach(slots=>{if(slots.every(slot=>assignment[slot]&&roleFit(onlinePlayer(assignment[slot]),slot)>=.96))template+=8/3;});
   const groupScore=(field,thresholds,cap)=>{const counts={};nonGk.forEach(x=>counts[x.p[field]]=(counts[x.p[field]]||0)+1);let total=0;Object.values(counts).forEach(n=>{let best=0;thresholds.forEach(([need,score])=>{if(n>=need)best=score;});total+=best;});return Math.min(cap,total);};
   const club=groupScore('club',[[2,4],[3,8],[4,12]],20),league=groupScore('league',[[2,3],[4,7],[6,11]],15),nation=groupScore('country',[[2,3],[3,6],[5,10]],15);const ratings=nonGk.map(x=>x.p.rating);const leaders=Math.min(6,ratings.filter(r=>r>=85).length*2);const gap=ratings.length?Math.max(...ratings)-Math.min(...ratings):99;const balance=gap<=8?4:gap<=12?3:gap<=16?2:gap<=20?1:0;const chemistry=Math.min(100,slotFit+template+club+league+nation+leaders+balance);
@@ -1570,7 +1570,7 @@ function bind() {
   });
   document.querySelectorAll('[data-switch-style]').forEach(el => el.onclick = () => {
     if (!game.match) return;
-    setTacticalStyle({ match: game.match }, 'A', el.dataset.switchStyle);
+    setTacticalStyle(game, 'A', el.dataset.switchStyle);
     game.match.aStyle = el.dataset.switchStyle;
     snapshot(`切换战术：${STYLE_BY_ID[el.dataset.switchStyle]?.name}`);
     save(); render();

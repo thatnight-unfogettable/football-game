@@ -1,7 +1,7 @@
 // 端到端测试：4 轮 BP + BO3 完整流程
 // 使用固定延迟让 server 有足够时间处理每条消息
 import { WebSocket } from 'ws';
-const URL = process.env.TEST_WS_URL || 'ws://localhost:3200/ws';
+const URL = process.env.TEST_WS_URL || 'ws://localhost:3000/ws';
 
 function mk(name) {
   const ws = new WebSocket(URL);

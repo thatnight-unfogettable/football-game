@@ -2,13 +2,13 @@
 import { WebSocket } from 'ws';
 
 function mk(name) {
-  const ws = new WebSocket('ws://localhost:3200/ws');
+  const ws = new WebSocket('ws://localhost:3000/ws');
   const msgs = [];
   ws.on('message', raw => msgs.push(JSON.parse(raw.toString())));
   return {
     ws, name, msgs,
     open: () => new Promise((res) => { if (ws.readyState === 1) return res(); ws.once('open', res); }),
-    send(type, payload = {}) { this.ws.send(JSON.stringify({ type, payload, protocol: 3 })); },
+    send(type, payload = {}) { this.ws.send(JSON.stringify({ type, payload, protocol: 4 })); },
     wait(ms) { return new Promise(r => setTimeout(r, ms)); },
     close() { this.ws.close(); },
   };

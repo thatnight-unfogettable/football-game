@@ -11,7 +11,7 @@ function mk(name) {
   ws.on('close', (code, buf) => console.log(`[${name}] CLOSE code=${code}`));
   return {
     ws, msgs,
-    send(type, payload = {}) { this.ws.send(JSON.stringify({ type, payload, protocol: 3 })); },
+    send(type, payload = {}) { this.ws.send(JSON.stringify({ type, payload, protocol: 4 })); },
     state() { const arr = this.msgs.filter(m => m.type === 'STATE'); return arr.length ? arr[arr.length - 1].payload : null; },
   };
 }

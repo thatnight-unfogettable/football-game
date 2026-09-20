@@ -4,7 +4,7 @@ import { WebSocket } from 'ws';
 import { JSDOM } from 'jsdom';
 
 const dom = new JSDOM('<!DOCTYPE html><div id=app></div>', {
-  url: 'http://localhost:3200/',
+  url: 'http://localhost:3100/',
   pretendToBeVisual: true,
 });
 const { window } = dom;

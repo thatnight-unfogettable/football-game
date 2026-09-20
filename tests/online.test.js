@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 
-const URL = process.env.TEST_WS_URL || 'ws://localhost:3100/ws';
+const URL = process.env.TEST_WS_URL || 'ws://localhost:3000/ws';
 function client() {
   const ws = new WebSocket(URL);
   const messages = [];

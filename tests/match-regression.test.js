@@ -1,6 +1,6 @@
 // 回归测试：BP 完后的比赛模式（战术选择 → 出牌 → 快进 → 90 分钟 → 点球 / 结果）
 import { WebSocket } from 'ws';
-const URL = process.env.TEST_WS_URL || 'ws://localhost:3200/ws';
+const URL = process.env.TEST_WS_URL || 'ws://localhost:3000/ws';
 
 function mk(name) {
   const ws = new WebSocket(URL);

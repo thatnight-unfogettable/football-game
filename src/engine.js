@@ -561,7 +561,8 @@ export function lineupMetrics(assignment, players) {
   };
   const paper = lineAverage('GK') * 0.1 + lineAverage('DEF') * 0.3 + lineAverage('MID') * 0.3 + lineAverage('FWD') * 0.3;
   const nonGk = entries.filter(x => x.slot !== 'GK');
-  const slotFit = nonGk.reduce((s, x) => s + x.fit, 0) / 10 * 32;
+  // 用实际非GK人数归一化，使 slotFit 上限恒为 32（10人时 *10/10=32，8人时 *8/10=25.6）
+  const slotFit = nonGk.length > 0 ? (nonGk.reduce((s, x) => s + x.fit, 0) / Math.min(nonGk.length, 10)) * 32 : 0;
   const roles = { FWD: ['LW','ST','RW'], MID: ['CM1','CDM','CM2'], DEF: ['LB','CB1','CB2','RB'] };
   let template = 0;
   Object.values(roles).forEach(slots => {
