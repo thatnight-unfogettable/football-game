@@ -204,8 +204,13 @@ export function handleOrder(room, side, choice, auto = false) {
   const r = applyOrder(g, side, choice);
   if (!r.ok) return r;
   room.history.push({ type: 'ORDER', side, choice, auto, at: Date.now() });
-  setDeadline(room, ACTION_TIMEOUT_MS, () => onTimeout(room));
-  // 如果先手方选完后对面是 AI 第二回合——这里没有 AI，所以对手是人类
+  // applyOrder 已把 firstPicker/firstBan 设置好。choiceOwner 留给下一轮开始时再切换。
+  // 回合推进由 STATE 消息驱动：客户端用 m.activeSide 判断能不能出手。
+  if (g.phase === 'PRE_PICK' || g.phase === 'BAN' || g.phase === 'POST_PICK' || g.phase === 'PICK') {
+    setDeadline(room, ACTION_TIMEOUT_MS, () => onTimeout(room));
+  } else {
+    clearDeadline(room);
+  }
   return { ok: true };
 }
 
