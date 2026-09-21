@@ -1157,6 +1157,8 @@ function onlineConnect(action,payload){
       if(added){const existing=ownPicks.filter(id=>id!==added&&id!==COURTOIS.id);const combo=findChemistryCombo(added,existing,onlinePlayer);if(combo)requestAnimationFrame(()=>setTimeout(()=>triggerChemistryAnimation(combo,onlinePlayer),80));}
     },
     error:(message)=>{
+      // 收到服务器错误时清除选择，避免重复发送同一个无效 ACTION
+      selectedId = null;
       online.error=message;
       render();
     },
