@@ -313,7 +313,12 @@ function finishLineupIfReady(room) {
 
 // 玩家选择战术风格
 export function handleSetStyle(room, side, styleId) {
+  if (room.game.phase !== 'tactical_pick') {
+    return { ok: false, error: '当前阶段不能设置战术' };
+  }
   if (!STYLE_BY_ID[styleId]) return { ok: false, error: '未知战术风格' };
+  // 确保 match 对象存在
+  if (!room.game.match) room.game.match = {};
   setTacticalStyle(room.game, side, styleId);
   room.history.push({ type: 'SET_STYLE', side, styleId, at: Date.now() });
   // 检查双方是否都选了
@@ -321,8 +326,18 @@ export function handleSetStyle(room, side, styleId) {
   if (m.aStyle && m.bStyle && room.game.phase === 'tactical_pick') {
     // 初始化 90 分钟比赛
     startMatch90(room.game, room.rng);
-    room.game.phase = 'match';
+    // startMatch90 会用 prevAStyle/prevBStyle 保留战术，但需重置其他手牌与已出牌字段
     room.game.match.phase = 'match_draw';
+    room.game.match.aDraw = room.game.match.aDraw || [];
+    room.game.match.bDraw = room.game.match.bDraw || [];
+    room.game.match.aPlayed = [];
+    room.game.match.bPlayed = [];
+    room.game.match.aPending = [];
+    room.game.match.bPending = [];
+    room.game.match.aChoice = null;
+    room.game.match.bChoice = null;
+    room.game.match.importantEvents = [];
+    room.game.match.tickMinute = 0;
     room.pending = 'MATCH_DRAW';
     clearDeadline(room);
     setDeadline(room, 60_000, () => onTimeout(room));
@@ -343,33 +358,53 @@ export function handlePlayCard(room, side, cardId) {
 
   // 检查双方都选了
   if (m.aChoice !== null && m.bChoice !== null) {
-    // 即时牌推进，修正牌加入 pending
+    // 重置上一轮的 ACK，避免"快进"按钮遗留的标志影响下一轮
+    m.fastForwardAck = { A: false, B: false };
+    m.continueAck = { A: false, B: false };
+
+    // 收集双方即时牌的目标分钟（取最大 + 5 分钟缓冲）
+    const minuteTargets = [];
     [m.aChoice, m.bChoice].forEach((id, i) => {
       const s = i === 0 ? 'A' : 'B';
       if (!id) return;
       const card = EVENT_BY_ID[id];
       if (card?.type === 'instant') {
-        const targetMin = Math.min(card.minuteEnd || card.minute, 90);
-        advanceToMinute(room.game, room.rng, targetMin);
+        // 即时牌只推进到 minute（不是 minuteEnd），避免双牌推进时分数翻倍
+        minuteTargets.push(Math.min(card.minute, 90));
+        (s === 'A' ? m.aPlayed : m.bPlayed).push(id);
       } else if (card?.type === 'modifier') {
+        // 修正牌进 pending（其播报在 advanceToMinute 内统一处理）
         (s === 'A' ? m.aPending : m.bPending).push(card);
+        m.importantEvents.push({
+          tick: m.tickMinute,
+          type: 'modifier_play',
+          text: `${s === 'A' ? '玩家A' : '玩家B'}打出：${card.emoji} ${card.name}`,
+          side: s,
+          cardId: id,
+        });
+        (s === 'A' ? m.aPlayed : m.bPlayed).push(id);
       }
     });
-    // 修正牌触发的播报在 advanceToMinute 里统一处理，这里不再重复 push
-    if (m.aChoice) m.aPlayed.push(m.aChoice);
-    if (m.bChoice) m.bPlayed.push(m.bChoice);
+
+    // 单次推进：避免双推进导致进球翻倍
+    if (minuteTargets.length) {
+      advanceToMinute(room.game, room.rng, Math.min(Math.max(...minuteTargets) + 5, 90));
+    } else {
+      // 全是修正牌时也走 5 分钟推进，保持节奏
+      advanceToMinute(room.game, room.rng, Math.min(m.tickMinute + 5, 90));
+    }
+
     m.aChoice = null;
     m.bChoice = null;
 
     if (m.tickMinute >= 90) {
-      advanceToMinute(room.game, room.rng, 90);
       finishMatch90(room.game);
-      if (room.game.phase === 'penalty') {
+      if (room.game.phase === 'PENALTY') {
         startPenaltyShootout(room.game, room.rng);
-        room.game.phase = 'penalty';
+        room.game.phase = 'PENALTY';
       } else {
         resolveMatch90(room.game);
-        room.game.phase = 'result';
+        room.game.phase = 'RESULT';
         room.status = 'finished';
         room.finishedAt = Date.now();
       }
@@ -386,21 +421,28 @@ export function handlePlayCard(room, side, cardId) {
 export function handleFastForward(room, side) {
   const m = room.game.match;
   if (!m || m.phase !== 'match_draw') return { ok: false, error: '当前不在出牌阶段' };
-  // 单边按一次算快进
+  // 双边 ACK 后才推进
+  if (!m.fastForwardAck) m.fastForwardAck = { A: false, B: false };
+  m.fastForwardAck[side] = true;
+  if (!(m.fastForwardAck.A && m.fastForwardAck.B)) return { ok: true };
+
+  // 重置 ACK，下一次快进继续累计
+  m.fastForwardAck = { A: false, B: false };
   advanceToMinute(room.game, room.rng, Math.min(m.tickMinute + 5, 90));
   m.tickMinute = Math.min(m.tickMinute + 5, 90);
   m.mode = 'fast';
   m.modeStartMin = m.tickMinute;
 
   if (m.tickMinute >= 90) {
-    advanceToMinute(room.game, room.rng, 90);
+    // 重置 ACK，避免遗留标志导致后续轮提前触发
+    m.fastForwardAck = { A: false, B: false };
     finishMatch90(room.game);
-    if (room.game.phase === 'penalty') {
+    if (room.game.phase === 'PENALTY') {
       startPenaltyShootout(room.game, room.rng);
-      room.game.phase = 'penalty';
+      room.game.phase = 'PENALTY';
     } else {
       resolveMatch90(room.game);
-      room.game.phase = 'result';
+      room.game.phase = 'RESULT';
       room.status = 'finished';
       room.finishedAt = Date.now();
     }
@@ -427,12 +469,12 @@ export function handleMatchContinue(room, side) {
     if (m.tickMinute >= 90) {
       advanceToMinute(room.game, room.rng, 90);
       finishMatch90(room.game);
-      if (room.game.phase === 'penalty') {
+      if (room.game.phase === 'PENALTY') {
         startPenaltyShootout(room.game, room.rng);
-        room.game.phase = 'penalty';
+        room.game.phase = 'PENALTY';
       } else {
         resolveMatch90(room.game);
-        room.game.phase = 'result';
+        room.game.phase = 'RESULT';
         room.status = 'finished';
         room.finishedAt = Date.now();
       }
@@ -448,7 +490,7 @@ export function handlePenaltyReady(room, side) {
   const m = room.game.match;
   if (!m || !m.penalty) return { ok: false, error: '当前不在点球阶段' };
   resolveMatch90(room.game);
-  room.game.phase = 'result';
+  room.game.phase = 'RESULT';
   room.status = 'finished';
   room.finishedAt = Date.now();
   clearDeadline(room);
@@ -486,6 +528,7 @@ export function handleForfeit(room, side, reason = '主动认输') {
     forfeit: room.forfeit,
   };
   room.game.phase = 'RESULT';
+  room.status = 'finished';
   room.history.push({ type: 'FORFEIT', ...room.forfeit, at: Date.now() });
   return { ok: true };
 }

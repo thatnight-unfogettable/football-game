@@ -24,13 +24,19 @@ const { PLAYER_DATA } = await import('../data/players.js');
 const { COUNTRY_ZH, CLUB_ZH, LEAGUE_ZH } = await import('../data/i18n.js');
 const { NAME_ZH, NAME_ZH_EXTRA } = await import('../data/names-zh.js');
 const { OnlineClient } = await import('../src/online.js');
-// 把 engine.js 的导出注入到 globalThis，使删掉 import 后的 app.js 仍能解析到这些常量
+// 把 engine.js 的导出注入到 globalThis（覆盖 node global 和 window，使 eval 中 globalThis 能读到）
 const ENGINE = await import('../src/engine.js');
-for (const [k, v] of Object.entries(ENGINE)) global[k] = v;
-global.PLAYER_DATA = PLAYER_DATA;
-global.COUNTRY_ZH = COUNTRY_ZH; global.CLUB_ZH = CLUB_ZH; global.LEAGUE_ZH = LEAGUE_ZH;
-global.NAME_ZH = NAME_ZH; global.NAME_ZH_EXTRA = NAME_ZH_EXTRA;
-global.OnlineClient = OnlineClient;
+for (const [k, v] of Object.entries(ENGINE)) {
+  global[k] = v;
+  window[k] = v;
+}
+global.PLAYER_DATA = PLAYER_DATA; window.PLAYER_DATA = PLAYER_DATA;
+global.COUNTRY_ZH = COUNTRY_ZH; window.COUNTRY_ZH = COUNTRY_ZH;
+global.CLUB_ZH = CLUB_ZH; window.CLUB_ZH = CLUB_ZH;
+global.LEAGUE_ZH = LEAGUE_ZH; window.LEAGUE_ZH = LEAGUE_ZH;
+global.NAME_ZH = NAME_ZH; window.NAME_ZH = NAME_ZH;
+global.NAME_ZH_EXTRA = NAME_ZH_EXTRA; window.NAME_ZH_EXTRA = NAME_ZH_EXTRA;
+global.OnlineClient = OnlineClient; window.OnlineClient = OnlineClient;
 
 const { readFileSync } = await import('fs');
 let appJs = readFileSync('./src/app.js', 'utf-8');

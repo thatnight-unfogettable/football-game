@@ -792,12 +792,10 @@ function tickMinuteBernoulli(state, rng, tick) {
   // Bernoulli 概率（比 Poisson 更适合单次试验）
   // 基础 λ = 0.045，目标：弱队 ≈ 2%，均势 ≈ 4.5%，强队 ≈ 7%
   // 90 分钟 ≈ 4-7 球，加上 style/modifier 后 ≈ 5-9 球（合理）
-  const lambda = 0.045 + (aO - bO) / 300;
-  const prob = Math.min(0.12, Math.max(0.015, lambda));
-
-  // 独立随机
-  if (rng.next() < prob) m.ag++;
-  if (rng.next() < Math.min(0.12, Math.max(0.015, 0.045 + (bO - aO) / 300))) m.bg++;
+  const lambdaA = 0.045 + (aO - bO) / 300;
+  const lambdaB = 0.045 + (bO - aO) / 300;
+  const probA = Math.min(0.12, Math.max(0.015, lambdaA));
+  const probB = Math.min(0.12, Math.max(0.015, lambdaB));
 
   state.logs.push({
     type: 'tick', tick,
@@ -816,13 +814,14 @@ export function advanceToMinute(state, rng, targetMinute) {
   m.tickMinute = Math.min(targetMinute, 90);
 
   let triggered = false;
-  // 即时牌触发（只触发 <= targetMinute 的）
+  // 即时牌触发：只要该牌所在 [minute, minuteEnd] 窗口被 tickMinute 跨越即触发
+  // （覆盖推进多次、跨分钟触发、Brace/Hattrick 这种 minute 等于目标分钟的卡）
   const trigger = (side, cardId) => {
     if (!cardId) return;
     const card = EVENT_BY_ID[cardId];
     if (!card || card.type !== 'instant') return;
-    // 只在 tickMinute 恰好等于 minute 时触发
-    if (card.minute === m.tickMinute) {
+    const reached = m.tickMinute >= card.minute && m.tickMinute <= (card.minuteEnd ?? 90);
+    if (reached) {
       triggered = true;
       if (card.instant?.goals) {
         if (side === 'A') m.ag += card.instant.goals;
@@ -880,14 +879,18 @@ export function advanceToMinute(state, rng, targetMinute) {
   // 判定是否结束
   if (m.tickMinute >= 90) {
     // 修正牌：延长补时（+4分钟上限）
-    // 先找最大 minuteEnd
     const maxEnd = Math.max(
       ...m.aPending.map(c => c.windowEnd).filter(Boolean),
       ...m.bPending.map(c => c.windowEnd).filter(Boolean),
       0,
     );
-    if (maxEnd > 90) {
-      m.tickMinute = maxEnd; // 延到最晚修正牌窗口结束
+    // 只有 maxEnd 严格大于 90 才进入补时；同时避免无限重入
+    if (maxEnd > 90 && m.tickMinute < maxEnd) {
+      // 推进到 maxEnd，再次结算补时内的 Bernoulli
+      for (let t = m.tickMinute + 1; t <= maxEnd && t <= 94; t++) {
+        tickMinuteBernoulli(state, rng, t);
+      }
+      m.tickMinute = maxEnd;
       m.phase = triggered ? 'match_important' : 'match_draw';
     } else {
       m.phase = 'finished';
@@ -990,9 +993,9 @@ export function finishMatch90(state) {
   const m = state.match;
   if (m.ag === m.bg) {
     // 平局：进入点球
-    state.phase = 'penalty';
+    state.phase = 'PENALTY';
   } else {
-    state.phase = 'result';
+    state.phase = 'RESULT';
   }
 }
 
@@ -1037,6 +1040,8 @@ export function resolveMatch90(state) {
     logs: state.logs,
   };
   state.phase = 'RESULT';
+  // sanitize to client uses lowercase; engine authoritative phase is uppercase
+  return state;
 }
 
 // ───────────────────────── AI ─────────────────────────

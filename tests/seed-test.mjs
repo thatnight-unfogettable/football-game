@@ -33,7 +33,8 @@ async function runWithSeed(seed) {
   global.OnlineClient = OnlineClient;
 
   let appJs = readFileSync('./src/app.js', 'utf-8');
-  appJs = appJs.replace(/^import.*$/gm, '');
+  // 删除多行 import 语句：从 `import` 开始的连续行（直到 `from '...';` 结束）
+  appJs = appJs.replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '');
   window.eval(appJs);
 
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
