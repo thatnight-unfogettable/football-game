@@ -366,13 +366,19 @@ function findPlayer(state, id) {
 // 当前应该出手的一方：'A' 或 'B'，无则 null
 export function activeSide(state) {
   if (state.phase === 'PRE_PICK') {
+    // 偶数次轮到 firstPicker，奇数次轮到对家（与 PICK/POST_PICK 保持一致）
     const taken = state.prePicks.length;
-    if (taken === 0) return state.firstPicker;
+    if (taken % 2 === 0) return state.firstPicker;
     return state.firstPicker === 'A' ? 'B' : 'A';
   }
   if (state.phase === 'POST_PICK' || state.phase === 'PICK') {
+    // 偶数次轮到 firstPicker，奇数次轮到对家。修复：之前
+    // `firstPicker === 'A' ? 'B' : 'A'` 不依赖 taken，三选轮 PICK
+    // 阶段 postPicks>=2 时所有出手都判给对家，导致一方连续选 3 次、
+    // 另一方第二次点击被服务端拒绝（表现为「点击没反应，等倒计时
+    // 自动选」）。
     const taken = state.postPicks.length;
-    if (taken === 0) return state.firstPicker;
+    if (taken % 2 === 0) return state.firstPicker;
     return state.firstPicker === 'A' ? 'B' : 'A';
   }
   if (state.phase === 'BAN') {
