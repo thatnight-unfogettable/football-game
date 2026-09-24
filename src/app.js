@@ -1150,6 +1150,17 @@ function onlineConnect(action,payload){
     state:(state)=>{
       const ownPicks = state.game?.picks?.[state.you] || [];
       const added = ownPicks.find(id => id !== COURTOIS.id && !online.lastOwnPicks.includes(id));
+      // 每次收到新状态时，若当前已选卡片已被 ban/pick 或不在候选池，则清空选择，
+      // 避免后选方因为遗留的旧选择点击确认后被服务端拒绝却看不到反馈。
+      const g = state.game;
+      if (selectedId && g?.candidates) {
+        const used = new Set([
+          ...(g.roundBans || []).map(x => x.id),
+          ...(g.prePicks || []),
+          ...(g.postPicks || []),
+        ]);
+        if (!g.candidates.includes(selectedId) || used.has(selectedId)) selectedId = null;
+      }
       online.state = state;
       online.lastOwnPicks = [...ownPicks];
       game={screen:'online-room'};
@@ -1318,7 +1329,7 @@ function onlineRoom(){
   const rosterOnline = (side, reverse = false) => onlineRoster(side, { ...m, viewer: you }, players, reverse);
   const roundPickIds = side => [...(m.prePicks || []), ...(m.postPicks || [])].filter(id => (m.pickOwners || {})[id] === side);
 
-  return `<div class="game">${onlineHeader}<div class="bp-layout">${rosterOnline(you, false)}<main class="board"><div class="turn-banner ${isYourTurn ? 'player' : 'ai'}"><b>${isYourTurn ? '你的回合' : '等待对方'}</b><span>${phaseLabel}</span></div>${m.phase === 'ORDER' && isYourTurn ? `<div class="choice-grid online-choice"><button data-online-order="first">我先选</button><button class="accent" data-online-order="last">我后选</button></div>` : ''}<section class="ban-panel"><div class="ban-row"><b>你方禁用</b>${(m.roundBans || []).filter(item => item.side === you).map((item, i) => { const p = onlinePlayer(item.id); return `<div class="ban-item"><span class="ban-idx">${i + 1}</span><div class="ban-info"><b>${esc(p?.name || item.id)}</b><small>${esc(p?.club || '')} · ${esc(p?.country || '')}</small></div><span class="ban-rating">${p?.rating || ''}</span></div>`; }).join('') || '<span class="ban-empty">暂无</span>'}</div><div class="ban-row"><b>对手禁用</b>${(m.roundBans || []).filter(item => item.side !== you).map((item, i) => { const p = onlinePlayer(item.id); return `<div class="ban-item"><span class="ban-idx">${i + 1}</span><div class="ban-info"><b>${esc(p?.name || item.id)}</b><small>${esc(p?.club || '')} · ${esc(p?.country || '')}</small></div><span class="ban-rating">${p?.rating || ''}</span></div>`; }).join('') || '<span class="ban-empty">暂无</span>'}</div></section><div class="candidate-grid">${cards}</div>${(m.phase === 'BAN' || pickPhase) && isYourTurn ? `<footer><span>${selectedId ? esc(nameZh(onlinePlayer(selectedId))) : '请选择球员'}</span><button class="primary" data-online-confirm ${!selectedId ? 'disabled' : ''}>确认${confirmText}</button></footer>` : ''}</main>${rosterOnline(enemySide, true)}</div></div>`;
+  return `<div class="game">${onlineHeader}<div class="bp-layout">${rosterOnline(you, false)}<main class="board">${online.error ? `<div class="online-error" style="text-align:center;padding:.5rem 1rem">${esc(online.error)}</div>` : ""}<div class="turn-banner ${isYourTurn ? 'player' : 'ai'}"><b>${isYourTurn ? '你的回合' : '等待对方'}</b><span>${phaseLabel}</span></div>${m.phase === 'ORDER' && isYourTurn ? `<div class="choice-grid online-choice"><button data-online-order="first">我先选</button><button class="accent" data-online-order="last">我后选</button></div>` : ''}<section class="ban-panel"><div class="ban-row"><b>你方禁用</b>${(m.roundBans || []).filter(item => item.side === you).map((item, i) => { const p = onlinePlayer(item.id); return `<div class="ban-item"><span class="ban-idx">${i + 1}</span><div class="ban-info"><b>${esc(p?.name || item.id)}</b><small>${esc(p?.club || '')} · ${esc(p?.country || '')}</small></div><span class="ban-rating">${p?.rating || ''}</span></div>`; }).join('') || '<span class="ban-empty">暂无</span>'}</div><div class="ban-row"><b>对手禁用</b>${(m.roundBans || []).filter(item => item.side !== you).map((item, i) => { const p = onlinePlayer(item.id); return `<div class="ban-item"><span class="ban-idx">${i + 1}</span><div class="ban-info"><b>${esc(p?.name || item.id)}</b><small>${esc(p?.club || '')} · ${esc(p?.country || '')}</small></div><span class="ban-rating">${p?.rating || ''}</span></div>`; }).join('') || '<span class="ban-empty">暂无</span>'}</div></section><div class="candidate-grid">${cards}</div>${(m.phase === 'BAN' || pickPhase) && isYourTurn ? `<footer><span>${selectedId ? esc(nameZh(onlinePlayer(selectedId))) : '请选择球员'}</span><button class="primary" data-online-confirm ${!selectedId ? 'disabled' : ''}>确认${confirmText}</button></footer>` : ''}</main>${rosterOnline(enemySide, true)}</div></div>`;
 }
 function render() {
   clearTimeout(aiTimer);
