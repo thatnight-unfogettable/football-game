@@ -98,7 +98,7 @@ async function main() {
   while (safety-- > 0) {
     const cur = A.phase();
     const m = A.st()?.game?.match;
-    if (cur === 'finished' || cur === 'penalty' || cur === 'result') break;
+    if (cur === 'finished' || cur === 'penalty' || cur === 'PENALTY' || cur === 'result' || cur === 'RESULT') break;
     if (cur === 'match' && m?.phase === 'match_important') {
       // 双方都按继续
       A.send('MATCH_CONTINUE');
@@ -116,18 +116,14 @@ async function main() {
   // 验证比赛结束流程
   const finalPhase = A.phase();
   if (finalPhase === 'match') throw new Error(`比赛未结束 phase=${finalPhase} match=${JSON.stringify(A.st()?.game?.match)}`);
-  if (finalPhase === 'penalty') {
-    // 等待点球自动跑完（理论上 startPenaltyShootout 同步结算）
-    await A.wait(500);
-  }
-  // penalty 阶段需要 PENALTY_READY → result
-  if (A.phase() === 'penalty') {
+  // 点球阶段需要 PENALTY_READY → RESULT
+  if (A.phase() === 'PENALTY' || A.phase() === 'penalty') {
     A.send('PENALTY_READY');
     B.send('PENALTY_READY');
-    await A.wait(400);
+    await A.wait(500);
   }
-  if (A.phase() !== 'result' && A.phase() !== 'finished') {
-    // room.status === 'finished' 时 server 用 room.status 显示，但 game.phase 可能保持 'result'
+  if (A.phase() !== 'RESULT' && A.phase() !== 'result' && A.phase() !== 'finished') {
+    // room.status === 'finished' 时 server 用 room.status 显示，但 game.phase 可能保持 'RESULT'
     const st = A.st();
     if (!st?.game?.result) throw new Error(`比赛未结算 phase=${A.phase()} room.status=${st?.status}`);
   }
@@ -140,3 +136,4 @@ async function main() {
 }
 
 main().catch(e => { console.error('❌', e.stack || e.message); process.exit(1); });
+

@@ -2,7 +2,7 @@
 import { WebSocket } from 'ws';
 
 function mk(name) {
-  const ws = new WebSocket('ws://localhost:3000/ws');
+  const ws = new WebSocket(process.env.TEST_WS_URL || 'ws://localhost:3000/ws');
   const msgs = [];
   ws.on('message', raw => msgs.push(JSON.parse(raw.toString())));
   return {
@@ -56,3 +56,4 @@ async function main() {
   process.exit(0);
 }
 main().catch(e => { console.error('❌', e.message); process.exit(1); });
+

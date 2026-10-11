@@ -1,6 +1,6 @@
 // 调试 ws 连接和消息
 import { WebSocket } from 'ws';
-const URL = 'ws://localhost:3100/ws';
+const URL = process.env.TEST_WS_URL || 'ws://localhost:3100/ws';
 
 function mk(name) {
   const ws = new WebSocket(URL);
@@ -52,3 +52,4 @@ async function main() {
   process.exit(0);
 }
 main().catch(e => { console.error(e); process.exit(1); });
+
